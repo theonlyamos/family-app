@@ -15,7 +15,11 @@ export async function getMembers() {
 export async function getMember(id: string) {
     try {
         const member = await prisma.member.findUnique({
-            where: { id }
+            where: { id },
+            include: {
+                father: true,
+                mother: true
+            }
         });
         return member;
     } catch (error) {

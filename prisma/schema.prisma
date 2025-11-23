@@ -31,9 +31,17 @@ model Member {
   zip          String?
   country      String?
   
-  // Family
-  fatherName   String?
-  motherName   String?
+  // Family Relations
+  fatherId    String?
+  father      Member?  @relation("FatherChildren", fields: [fatherId], references: [id], onDelete: SetNull)
+  
+  motherId    String?
+  mother      Member?  @relation("MotherChildren", fields: [motherId], references: [id], onDelete: SetNull)
+  
+  // Reverse relations
+  childrenAsFather Member[] @relation("FatherChildren")
+  childrenAsMother Member[] @relation("MotherChildren")
+  
   aliases      String?
   education    String?
   

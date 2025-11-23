@@ -156,11 +156,15 @@ export default async function MemberDetailsPage({ params }: { params: { id: stri
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <div className="text-sm text-muted-foreground mb-1">Father's Name</div>
-                                    <div className="font-medium">{member.fatherName || "N/A"}</div>
+                                    <div className="font-medium">
+                                        {member.father ? `${member.father.firstName} ${member.father.lastName}` : "N/A"}
+                                    </div>
                                 </div>
                                 <div>
                                     <div className="text-sm text-muted-foreground mb-1">Mother's Name</div>
-                                    <div className="font-medium">{member.motherName || "N/A"}</div>
+                                    <div className="font-medium">
+                                        {member.mother ? `${member.mother.firstName} ${member.mother.lastName}` : "N/A"}
+                                    </div>
                                 </div>
                             </div>
                             <div>

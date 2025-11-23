@@ -21,8 +21,8 @@ export async function createMember(formData: FormData) {
     const state = formData.get("state") as string;
     const zip = formData.get("zip") as string;
     const country = formData.get("country") as string;
-    const fatherName = formData.get("fatherName") as string;
-    const motherName = formData.get("motherName") as string;
+    const fatherId = formData.get("fatherId") as string | null;
+    const motherId = formData.get("motherId") as string | null;
     const aliases = formData.get("aliases") as string;
     const education = formData.get("education") as string;
     const role = formData.get("role") as string || "Member";
@@ -50,8 +50,8 @@ export async function createMember(formData: FormData) {
                 state,
                 zip,
                 country,
-                fatherName,
-                motherName,
+                fatherId: fatherId || null,
+                motherId: motherId || null,
                 aliases,
                 education,
                 role,
@@ -83,8 +83,8 @@ export async function updateMember(id: string, formData: FormData) {
     const state = formData.get("state") as string;
     const zip = formData.get("zip") as string;
     const country = formData.get("country") as string;
-    const fatherName = formData.get("fatherName") as string;
-    const motherName = formData.get("motherName") as string;
+    const fatherId = formData.get("fatherId") as string | null;
+    const motherId = formData.get("motherId") as string | null;
     const aliases = formData.get("aliases") as string;
     const education = formData.get("education") as string;
     const role = formData.get("role") as string;
@@ -109,8 +109,8 @@ export async function updateMember(id: string, formData: FormData) {
                 state,
                 zip,
                 country,
-                fatherName,
-                motherName,
+                fatherId: fatherId || null,
+                motherId: motherId || null,
                 aliases,
                 education,
                 role,
