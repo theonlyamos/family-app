@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Member {
+  id          String   @id @default(uuid())
+  firstName   String
+  lastName    String
+  middleName  String?
+  gender      String?
+  dob         DateTime?
+  dod         DateTime?
+  pob         String?
+  occupation  String?
+  
+  // Contact Info
+  email       String?
+  phone       String?
+  
+  // Address
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  zip          String?
+  country      String?
+  
+  // Family
+  fatherName   String?
+  motherName   String?
+  aliases      String?
+  education    String?
+  
+  role         String   @default("Member") // Admin, Parent, Child, Member
+  avatarUrl    String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  dues         Due[]
+  events       Event[]  @relation("EventAttendees")
+
+  @@map("members")
+}
+
+model Due {
+  id          String   @id @default(uuid())
+  title       String
+  amount      Float
+  dueDate     DateTime
+  status      String   @default("Pending") // Pending, Paid, Overdue
+  description String?
+  
+  memberId    String?
+  member      Member?  @relation(fields: [memberId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("dues")
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  date        DateTime
+  location    String?
+  description String?
+  type        String?  // Birthday, Anniversary, etc.
+  
+  attendees   Member[] @relation("EventAttendees")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("events")
+}
