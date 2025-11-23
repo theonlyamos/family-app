@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { getMembers } from "@/app/data/members"
 import { CreateEventForm } from "@/components/events/create-event-form"
 

@@ -104,7 +104,7 @@ export function CreateEventForm({ members }: CreateEventFormProps) {
                                                 onCheckedChange={() => toggleAttendee(member.id)}
                                                 id={`member-${member.id}`}
                                             />
-                                            <Label htmlFor={`member-${member.id}`} className="cursor-pointer">{member.name}</Label>
+                                            <Label htmlFor={`member-${member.id}`} className="cursor-pointer">{member.firstName} {member.lastName}</Label>
                                         </div>
                                     ))}
                                 </div>

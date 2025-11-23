@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { getEvents } from "@/app/data/events"
 import { EventsClientWrapper } from "@/components/events/events-client-wrapper"
 
