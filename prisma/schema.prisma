@@ -53,6 +53,8 @@ model Member {
 
   dues         Due[]
   events       Event[]  @relation("EventAttendees")
+  transactions FinancialTransaction[]
+  documents    Document[]
 
   @@map("members")
 }
@@ -87,5 +89,44 @@ model Event {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+
   @@map("events")
+}
+
+model FinancialTransaction {
+  id          String   @id @default(uuid())
+  amount      Float
+  type        String   // "Income" or "Expense"
+  category    String
+  date        DateTime
+  description String?
+  
+  members     Member[]
+  
+  documents   Document[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("financial_transactions")
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  name        String
+  url         String
+  type        String   // MIME type
+  size        Int      // Size in bytes
+  
+  description String?
+  
+  transactionId String?
+  transaction   FinancialTransaction? @relation(fields: [transactionId], references: [id])
+  
+  members       Member[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("documents")
 }

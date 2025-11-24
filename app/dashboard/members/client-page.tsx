@@ -21,9 +21,22 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, Search } from "lucide-react"
+import { Plus, Search, Eye, Pencil, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Member } from "@prisma/client"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { deleteMember } from "@/app/actions/members"
+import { toast } from "sonner"
 
 interface MembersClientPageProps {
     members: Member[]
@@ -122,11 +135,45 @@ export default function MembersClientPage({ members }: MembersClientPageProps) {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50" asChild>
-                                            <Link href={`/dashboard/members/${member.id}`}>
-                                                Edit
-                                            </Link>
-                                        </Button>
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" asChild title="View Details">
+                                                <Link href={`/dashboard/members/${member.id}`}>
+                                                    <Eye className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" asChild title="Edit Member">
+                                                <Link href={`/dashboard/members/${member.id}/edit`}>
+                                                    <Pencil className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" title="Delete Member">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This action cannot be undone. This will permanently delete {member.firstName} {member.lastName} and remove their data from our servers.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            className="bg-red-600 hover:bg-red-700"
+                                                            onClick={async () => {
+                                                                await deleteMember(member.id)
+                                                                toast.success("Member deleted successfully")
+                                                            }}
+                                                        >
+                                                            Delete
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))

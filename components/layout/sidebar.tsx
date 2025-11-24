@@ -44,6 +44,11 @@ const sidebarItems = [
         href: "/dashboard/documents",
         icon: Folder,
     },
+    {
+        title: "Financials",
+        href: "/dashboard/financials",
+        icon: TrendingUp,
+    },
 ]
 
 export function Sidebar() {

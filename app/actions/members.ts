@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { saveDocument } from "./documents";
+
 export async function createMember(formData: FormData) {
     const firstName = formData.get("firstName") as string;
     const lastName = formData.get("lastName") as string;
@@ -26,13 +28,14 @@ export async function createMember(formData: FormData) {
     const aliases = formData.get("aliases") as string;
     const education = formData.get("education") as string;
     const role = formData.get("role") as string || "Member";
+    const file = formData.get("file") as File;
 
     if (!firstName || !lastName) {
         throw new Error("First name and last name are required");
     }
 
     try {
-        await prisma.member.create({
+        const member = await prisma.member.create({
             data: {
                 firstName,
                 lastName,
@@ -57,6 +60,10 @@ export async function createMember(formData: FormData) {
                 role,
             },
         });
+
+        if (file && file.size > 0) {
+            await saveDocument(file, { memberId: member.id });
+        }
     } catch (error) {
         console.error("Failed to create member:", error);
         throw new Error("Failed to create member");
@@ -83,11 +90,15 @@ export async function updateMember(id: string, formData: FormData) {
     const state = formData.get("state") as string;
     const zip = formData.get("zip") as string;
     const country = formData.get("country") as string;
-    const fatherId = formData.get("fatherId") as string | null;
-    const motherId = formData.get("motherId") as string | null;
+    const fatherId = formData.get("fatherId") as string;
+    const motherId = formData.get("motherId") as string;
     const aliases = formData.get("aliases") as string;
     const education = formData.get("education") as string;
-    const role = formData.get("role") as string;
+    const file = formData.get("file") as File;
+
+    // Handle empty strings as null for relations
+    const fatherIdValue = fatherId === "" ? null : fatherId;
+    const motherIdValue = motherId === "" ? null : motherId;
 
     try {
         await prisma.member.update({
@@ -109,13 +120,16 @@ export async function updateMember(id: string, formData: FormData) {
                 state,
                 zip,
                 country,
-                fatherId: fatherId || null,
-                motherId: motherId || null,
+                fatherId: fatherIdValue,
+                motherId: motherIdValue,
                 aliases,
                 education,
-                role,
             },
         });
+
+        if (file && file.size > 0) {
+            await saveDocument(file, { memberId: id });
+        }
     } catch (error) {
         console.error("Failed to update member:", error);
         throw new Error("Failed to update member");

@@ -18,7 +18,8 @@ export async function getMember(id: string) {
             where: { id },
             include: {
                 father: true,
-                mother: true
+                mother: true,
+                documents: true
             }
         });
         return member;

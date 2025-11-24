@@ -11,8 +11,9 @@ import { Calendar, FileText, Cake, GraduationCap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 
-export default async function MemberDetailsPage({ params }: { params: { id: string } }) {
-    const member = await getMember(params.id)
+export default async function MemberDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params
+    const member = await getMember(id)
 
     if (!member) {
         notFound()
@@ -42,7 +43,11 @@ export default async function MemberDetailsPage({ params }: { params: { id: stri
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <Button className="bg-blue-600 hover:bg-blue-700">Update Member</Button>
+                        <Button className="bg-blue-600 hover:bg-blue-700" asChild>
+                            <Link href={`/dashboard/members/${member.id}/edit`}>
+                                Update Member
+                            </Link>
+                        </Button>
                         <Button variant="outline" asChild>
                             <Link href="/dashboard/members/family-tree">
                                 View in Family Tree
@@ -202,8 +207,23 @@ export default async function MemberDetailsPage({ params }: { params: { id: stri
                         <CardHeader>
                             <CardTitle>Uploaded Documents</CardTitle>
                         </CardHeader>
-                        <CardContent className="text-sm text-muted-foreground">
-                            Documents functionality coming soon.
+                        <CardContent className="space-y-2">
+                            {member.documents && member.documents.length > 0 ? (
+                                member.documents.map((doc) => (
+                                    <a
+                                        key={doc.id}
+                                        href={doc.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 p-2 rounded-md hover:bg-muted transition-colors group"
+                                    >
+                                        <FileText className="h-4 w-4 text-muted-foreground group-hover:text-blue-600" />
+                                        <span className="text-sm font-medium truncate flex-1">{doc.name}</span>
+                                    </a>
+                                ))
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No documents uploaded.</p>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
