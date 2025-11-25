@@ -13,7 +13,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { createMember, updateMember } from "@/app/actions/members"
+import { createMemberOffline, updateMemberOffline } from "@/lib/actions/member-actions-offline"
 import { useState, useTransition } from "react"
 import { Member } from "@prisma/client"
 import { MemberSelect } from "@/components/members/member-select"
@@ -49,15 +49,15 @@ export function AddMemberForm({ members, initialData, mode = "create" }: AddMemb
         startTransition(async () => {
             try {
                 if (isUpdateMode) {
-                    await updateMember(initialData.id, formData)
+                    await updateMemberOffline(initialData.id, formData)
                     toast.success("Member updated successfully!")
                 } else {
-                    await createMember(formData)
+                    await createMemberOffline(formData)
                     toast.success("Member created successfully!")
                 }
                 router.push("/dashboard/members")
             } catch (error) {
-                toast.error(`Failed to ${isUpdateMode ? "update" : "create"} member. Please try again.`)
+                // Error toast already shown by offline wrapper
                 console.error(`Error ${isUpdateMode ? "updating" : "creating"} member:`, error)
             }
         })

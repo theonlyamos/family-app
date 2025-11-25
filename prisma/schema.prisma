@@ -52,6 +52,7 @@ model Member {
   updatedAt    DateTime @updatedAt
 
   dues         Due[]
+  duePayments  DuePayment[]
   events       Event[]  @relation("EventAttendees")
   transactions FinancialTransaction[]
   documents    Document[]
@@ -64,16 +65,37 @@ model Due {
   title       String
   amount      Float
   dueDate     DateTime
-  status      String   @default("Pending") // Pending, Paid, Overdue
+  status      String   @default("Pending") // Pending, Paid, Overdue, PartiallyPaid
   description String?
   
   memberId    String?
   member      Member?  @relation(fields: [memberId], references: [id])
   
+  payments    DuePayment[]
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("dues")
+}
+
+model DuePayment {
+  id            String   @id @default(uuid())
+  amount        Float
+  paymentDate   DateTime
+  paymentMethod String   // Cash, Card, Bank Transfer, etc.
+  notes         String?
+  
+  dueId         String
+  due           Due      @relation(fields: [dueId], references: [id], onDelete: Cascade)
+  
+  memberId      String
+  member        Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("due_payments")
 }
 
 model Event {

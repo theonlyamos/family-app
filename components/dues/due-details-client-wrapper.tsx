@@ -20,11 +20,14 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+import { Member } from "@prisma/client"
+
 interface DueDetailsClientWrapperProps {
     due: Due
+    members: Member[]
 }
 
-export function DueDetailsClientWrapper({ due }: DueDetailsClientWrapperProps) {
+export function DueDetailsClientWrapper({ due, members }: DueDetailsClientWrapperProps) {
     const router = useRouter()
     const [isCollectModalOpen, setIsCollectModalOpen] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -71,7 +74,7 @@ export function DueDetailsClientWrapper({ due }: DueDetailsClientWrapperProps) {
                 </AlertDialog>
             </div>
 
-            <CollectDueModal open={isCollectModalOpen} onOpenChange={setIsCollectModalOpen} />
+            <CollectDueModal open={isCollectModalOpen} onOpenChange={setIsCollectModalOpen} due={due} members={members} />
             <CreateDueModal
                 open={isEditModalOpen}
                 onOpenChange={setIsEditModalOpen}

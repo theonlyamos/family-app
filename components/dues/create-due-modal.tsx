@@ -24,8 +24,9 @@ import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { useState, useTransition } from "react"
-import { createDue, updateDue } from "@/app/actions/dues"
+import { createDueOffline, updateDueOffline } from "@/lib/actions/due-actions-offline"
 import { Member } from "@prisma/client"
+import { toast } from "sonner"
 
 export interface DueFormData {
     id?: string
@@ -64,9 +65,6 @@ export function CreateDueModal({ open, onOpenChange, initialData, members = [] }
         formData.append("amount", amount)
         formData.append("dueDate", date.toISOString())
         formData.append("description", description)
-        // Note: Recurrence and Member assignment are not yet in the Due model schema based on actions/dues.ts
-        // We'll need to update the schema or actions later to support these fully if needed.
-        // For now, we'll just send what the server action expects.
         if (selectedMember) {
             formData.append("assignedToId", selectedMember === "all" ? "" : selectedMember)
         }
@@ -74,11 +72,12 @@ export function CreateDueModal({ open, onOpenChange, initialData, members = [] }
         startTransition(async () => {
             try {
                 if (isEditing && initialData.id) {
-                    // For update, we might need status too, but let's keep it simple for now
                     formData.append("status", "Pending")
-                    await updateDue(initialData.id, formData)
+                    await updateDueOffline(initialData.id, formData)
+                    toast.success("Due updated successfully!")
                 } else {
-                    await createDue(formData)
+                    await createDueOffline(formData)
+                    toast.success("Due created successfully!")
                 }
                 onOpenChange(false)
                 // Reset form if creating
@@ -89,8 +88,8 @@ export function CreateDueModal({ open, onOpenChange, initialData, members = [] }
                     setDescription("")
                 }
             } catch (error) {
+                // Error toast already shown by offline wrapper
                 console.error("Failed to save due:", error)
-                // TODO: Show error toast
             }
         })
     }

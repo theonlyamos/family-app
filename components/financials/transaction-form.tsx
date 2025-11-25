@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { createTransaction } from "@/app/actions/financials"
+import { createTransactionOffline } from "@/lib/actions/financial-actions-offline"
 import { useState, useTransition } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -44,11 +44,11 @@ export function TransactionForm({ members }: TransactionFormProps) {
 
         startTransition(async () => {
             try {
-                await createTransaction(formData)
+                await createTransactionOffline(formData)
                 toast.success("Transaction created successfully!")
                 router.push("/dashboard/financials")
             } catch (error) {
-                toast.error("Failed to create transaction. Please try again.")
+                // Error toast already shown by offline wrapper
                 console.error("Error creating transaction:", error)
             }
         })

@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin } from "lucide-react"
 import Link from "next/link"
 import { useState, useTransition } from "react"
-import { createEvent } from "@/app/actions/events"
+import { createEventOffline } from "@/lib/actions/event-actions-offline"
 import { useRouter } from "next/navigation"
 import { Member } from "@prisma/client"
 import { Checkbox } from "@/components/ui/checkbox"
+import { toast } from "sonner"
 
 interface CreateEventFormProps {
     members: Member[]
@@ -25,19 +26,15 @@ export function CreateEventForm({ members }: CreateEventFormProps) {
 
     const handleSubmit = async (formData: FormData) => {
         // Append selected attendees to formData
-        // Since we can't directly append array to FormData in a way that server action automatically parses as array of strings easily without custom parsing,
-        // we'll handle this by sending multiple 'attendees' entries or a JSON string.
-        // For simplicity with standard FormData handling in server actions, let's assume the server action handles 'attendees' as GetAll or we pass it differently.
-        // Actually, looking at the server action signature (which I recall takes FormData), I might need to adjust how I pass data or how the server action reads it.
-        // Let's rely on the server action to read 'attendees' from formData.getAll('attendees').
-
         selectedAttendees.forEach(id => formData.append('attendees', id))
 
         startTransition(async () => {
             try {
-                await createEvent(formData)
+                await createEventOffline(formData)
+                toast.success("Event created successfully!")
                 router.push("/dashboard/events")
             } catch (error) {
+                // Error toast already shown by offline wrapper
                 console.error("Failed to create event:", error)
             }
         })

@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MoreHorizontal, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { getMembers } from "@/app/data/members"
 import { getDue } from "@/app/data/dues"
 import { notFound } from "next/navigation"
 import { format } from "date-fns"
@@ -21,6 +22,7 @@ import { DueDetailsClientWrapper } from "@/components/dues/due-details-client-wr
 
 export default async function DueDetailsPage({ params }: { params: { id: string } }) {
     const due = await getDue(params.id)
+    const members = await getMembers()
 
     if (!due) {
         notFound()
@@ -48,7 +50,7 @@ export default async function DueDetailsPage({ params }: { params: { id: string 
                         <h2 className="text-3xl font-bold tracking-tight">{due.title}</h2>
                         <p className="text-muted-foreground">{due.description || "No description provided."}</p>
                     </div>
-                    <DueDetailsClientWrapper due={due} />
+                    <DueDetailsClientWrapper due={due} members={members} />
                 </div>
             </div>
 
