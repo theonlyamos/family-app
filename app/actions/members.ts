@@ -62,7 +62,7 @@ export async function createMember(formData: FormData) {
         });
 
         if (file && file.size > 0) {
-            await saveDocument(file, { memberId: member.id });
+            await saveDocument(file, { memberIds: [member.id] });
         }
     } catch (error) {
         console.error("Failed to create member:", error);
@@ -128,7 +128,7 @@ export async function updateMember(id: string, formData: FormData) {
         });
 
         if (file && file.size > 0) {
-            await saveDocument(file, { memberId: id });
+            await saveDocument(file, { memberIds: [id] });
         }
     } catch (error) {
         console.error("Failed to update member:", error);

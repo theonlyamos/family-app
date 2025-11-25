@@ -17,10 +17,10 @@ interface Transaction {
     category: string;
     date: Date;
     description: string | null;
-    member: {
+    members: {
         firstName: string;
         lastName: string;
-    } | null;
+    }[];
     documents?: {
         id: string;
         name: string;
@@ -63,8 +63,8 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                 <TableCell>{transaction.description || "-"}</TableCell>
                                 <TableCell>{transaction.category}</TableCell>
                                 <TableCell>
-                                    {transaction.member
-                                        ? `${transaction.member.firstName} ${transaction.member.lastName}`
+                                    {transaction.members && transaction.members.length > 0
+                                        ? transaction.members.map(m => `${m.firstName} ${m.lastName}`).join(", ")
                                         : "-"}
                                 </TableCell>
                                 <TableCell>
