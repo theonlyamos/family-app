@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback, useMemo } from "react"
+import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import {
     ReactFlow,
     MiniMap,
@@ -22,24 +22,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
 import {
     ChevronRight,
     Mail,
@@ -59,7 +41,6 @@ import {
     MessageSquare,
     Copy,
     Plus,
-    X,
     Camera,
     ArrowLeft,
     Activity,
@@ -70,6 +51,7 @@ import {
 interface Member {
     id: string;
     first_name: string;
+    middle_name?: string;
     last_name: string;
     aliases?: string[];
     date_of_birth?: string;
@@ -196,101 +178,6 @@ const mockActivities = [
     { id: "3", action: "Attended Family Dinner event", date: "2024-03-01T18:00:00Z", type: "event" },
 ]
 
-// Searchable Relationship Selector (reused from main page)
-function SearchableMemberSelector({
-    selectedMembers,
-    onChange,
-    label,
-    placeholder = "Search for family members...",
-    allMembers
-}: {
-    selectedMembers: string[]
-    onChange: (memberIds: string[]) => void
-    label: string
-    placeholder?: string
-    allMembers: Member[]
-}) {
-    const [searchQuery, setSearchQuery] = useState("")
-    const [isOpen, setIsOpen] = useState(false)
-    const inputRef = useRef<HTMLInputElement>(null)
-
-    const selectedMemberObjects = allMembers.filter(m => selectedMembers.includes(m.id))
-
-    const filteredMembers = allMembers.filter(member =>
-        !selectedMembers.includes(member.id) &&
-        (member.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         member.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         `${member.first_name} ${member.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-
-    const addMember = (memberId: string) => {
-        onChange([...selectedMembers, memberId])
-        setSearchQuery("")
-        inputRef.current?.focus()
-    }
-
-    const removeMember = (memberId: string) => {
-        onChange(selectedMembers.filter(id => id !== memberId))
-    }
-
-    return (
-        <div className="space-y-2">
-            <Label>{label}</Label>
-            {selectedMemberObjects.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
-                    {selectedMemberObjects.map((member) => (
-                        <div key={member.id} className="flex items-center gap-2 px-3 py-1.5 bg-[oklch(0.94_0.02_145)] rounded-full text-sm">
-                            <Avatar className="h-5 w-5">
-                                <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
-                                    {member.first_name[0]}{member.last_name[0]}
-                                </AvatarFallback>
-                            </Avatar>
-                            <span>{member.first_name} {member.last_name}</span>
-                            <button type="button" onClick={() => removeMember(member.id)} className="hover:bg-primary/20 rounded-full p-0.5 transition-colors cursor-pointer">
-                                <X className="h-3 w-3" />
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
-            <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    ref={inputRef}
-                    value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); setIsOpen(true) }}
-                    onFocus={() => setIsOpen(true)}
-                    placeholder={placeholder}
-                    className="rounded-xl pl-10"
-                />
-                {isOpen && (searchQuery || filteredMembers.length > 0) && (
-                    <>
-                        <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                        <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-lg max-h-[200px] overflow-y-auto">
-                            {filteredMembers.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-muted-foreground">{searchQuery ? "No members found" : "Type to search..."}</div>
-                            ) : (
-                                filteredMembers.map((member) => (
-                                    <div key={member.id} onClick={() => addMember(member.id)} className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer transition-colors">
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarFallback className="bg-primary/10 text-primary text-xs">{member.first_name[0]}{member.last_name[0]}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1 min-w-0">
-                                            <span className="text-sm font-medium block">{member.first_name} {member.last_name}</span>
-                                            <span className="text-xs text-muted-foreground truncate block">{member.email_addresses?.[0] || "No email"}</span>
-                                        </div>
-                                        <Plus className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </>
-                )}
-            </div>
-        </div>
-    )
-}
-
 // Copy to clipboard function
 function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text)
@@ -318,7 +205,7 @@ function MiniFamilyTree({
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([] as Edge[])
 
     // Generate nodes and edges based on family relationships
-    useMemo(() => {
+    useEffect(() => {
         const newNodes: Node[] = []
         const newEdges: Edge[] = []
         let yPos = 0
@@ -571,15 +458,6 @@ export default function MemberDetailsPage() {
     const children = mockMembers.filter(m => member.children?.includes(m.id))
     const siblings = mockMembers.filter(m => member.siblings?.includes(m.id))
 
-    // Edit modal state
-    const [isEditOpen, setIsEditOpen] = useState(false)
-    const [editForm, setEditForm] = useState<Partial<Member>>({ ...member })
-
-    const handleSaveEdit = () => {
-        // In a real app, this would update the database
-        setIsEditOpen(false)
-    }
-
     return (
         <div className="space-y-6">
             {/* Breadcrumb */}
@@ -611,7 +489,7 @@ export default function MemberDetailsPage() {
                             <div className="space-y-2">
                                 <div className="flex flex-col md:flex-row md:items-center gap-3 justify-center md:justify-start">
                                     <h1 className="text-3xl md:text-4xl font-display font-medium tracking-tight">
-                                        {member.first_name} {member.last_name}
+                                        {[member.first_name, member.middle_name, member.last_name].filter(Boolean).join(' ')}
                                     </h1>
                                     <Badge variant={member.role === "admin" ? "sage" : member.role === "viewer" ? "secondary" : "default"} className="capitalize w-fit mx-auto md:mx-0">
                                         {member.role}
@@ -630,9 +508,11 @@ export default function MemberDetailsPage() {
 
                             {/* Action Buttons */}
                             <div className="flex gap-2 mt-4 justify-center md:justify-start">
-                                <Button variant="outline" className="rounded-xl" onClick={() => setIsEditOpen(true)}>
-                                    <Edit className="mr-2 h-4 w-4" /> Edit Profile
-                                </Button>
+                                <Link href={`/dashboard/members?edit=${member.id}`}>
+                                    <Button variant="outline" className="rounded-xl">
+                                        <Edit className="mr-2 h-4 w-4" /> Edit Profile
+                                    </Button>
+                                </Link>
                                 <Button variant="outline" className="rounded-xl">
                                     <MessageSquare className="mr-2 h-4 w-4" /> Message
                                 </Button>
@@ -1032,81 +912,6 @@ export default function MemberDetailsPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
-
-            {/* Edit Modal */}
-            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="font-display text-2xl">Edit Profile</DialogTitle>
-                        <DialogDescription>Update member information below.</DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-6 py-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>First Name</Label>
-                                <Input value={editForm.first_name} onChange={(e) => setEditForm({...editForm, first_name: e.target.value})} className="rounded-xl" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Last Name</Label>
-                                <Input value={editForm.last_name} onChange={(e) => setEditForm({...editForm, last_name: e.target.value})} className="rounded-xl" />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Date of Birth</Label>
-                            <Input type="date" value={editForm.date_of_birth} onChange={(e) => setEditForm({...editForm, date_of_birth: e.target.value})} className="rounded-xl" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Place of Residence</Label>
-                            <Input value={editForm.place_of_residence} onChange={(e) => setEditForm({...editForm, place_of_residence: e.target.value})} className="rounded-xl" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Education</Label>
-                            <Input value={editForm.education} onChange={(e) => setEditForm({...editForm, education: e.target.value})} className="rounded-xl" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Occupation</Label>
-                            <Input value={editForm.occupation} onChange={(e) => setEditForm({...editForm, occupation: e.target.value})} className="rounded-xl" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Bio</Label>
-                            <Textarea value={editForm.bio} onChange={(e) => setEditForm({...editForm, bio: e.target.value})} className="rounded-xl min-h-[100px]" />
-                        </div>
-                        <SearchableMemberSelector
-                            label="Father"
-                            selectedMembers={editForm.father ? [editForm.father] : []}
-                            onChange={(ids) => setEditForm({...editForm, father: ids[0] || ""})}
-                            allMembers={mockMembers.filter(m => m.gender === 'male')}
-                        />
-                        <SearchableMemberSelector
-                            label="Mother"
-                            selectedMembers={editForm.mother ? [editForm.mother] : []}
-                            onChange={(ids) => setEditForm({...editForm, mother: ids[0] || ""})}
-                            allMembers={mockMembers.filter(m => m.gender === 'female')}
-                        />
-                        <SearchableMemberSelector
-                            label="Spouse / Partner"
-                            selectedMembers={editForm.spouse ? [editForm.spouse] : []}
-                            onChange={(ids) => setEditForm({...editForm, spouse: ids[0] || ""})}
-                            allMembers={mockMembers}
-                        />
-                        <div className="space-y-2">
-                            <Label>Role</Label>
-                            <Select value={editForm.role} onValueChange={(value: "admin" | "member" | "viewer") => setEditForm({...editForm, role: value})}>
-                                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="member">Member</SelectItem>
-                                    <SelectItem value="viewer">Viewer</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" className="rounded-xl" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-                        <Button className="rounded-xl" onClick={handleSaveEdit}>Save Changes</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     )
 }

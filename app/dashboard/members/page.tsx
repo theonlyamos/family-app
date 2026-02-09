@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect, Suspense } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
     Table,
@@ -44,6 +45,7 @@ import Link from "next/link"
 interface Member {
     id: string;
     first_name: string;
+    middle_name?: string;
     last_name: string;
     aliases?: string[];
     date_of_birth?: string;
@@ -183,9 +185,10 @@ function RelationshipSelector({ label, value, onChange, members, multiple = fals
     const [isOpen, setIsOpen] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
     const selectedIds = multiple ? (value as string[]) : value ? [value as string] : []
-    const selectedMembers = members.filter(m => selectedIds.includes(m.id))
-    const filteredMembers = members.filter(member => 
-        !selectedIds.includes(member.id) &&
+    const selectedIdSet = new Set(selectedIds)
+    const selectedMembers = members.filter(m => selectedIdSet.has(m.id))
+    const filteredMembers = members.filter(member =>
+        !selectedIdSet.has(member.id) &&
         (member.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
          member.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
          `${member.first_name} ${member.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -248,27 +251,51 @@ function RelationshipSelector({ label, value, onChange, members, multiple = fals
     )
 }
 
-export default function MembersPage() {
+function MembersPageContent() {
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const editMemberId = searchParams.get('edit')
+
     const [members, setMembers] = useState<Member[]>(mockMembers)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingMember, setEditingMember] = useState<Member | null>(null)
     const [formData, setFormData] = useState<Partial<Member>>({
-        first_name: "", last_name: "", aliases: [], date_of_birth: "", place_of_birth: "", place_of_residence: "",
+        first_name: "", middle_name: "", last_name: "", aliases: [], date_of_birth: "", place_of_birth: "", place_of_residence: "",
         phone_numbers: [], email_addresses: [], education: "", occupation: "", gender: "", bio: "",
         father: "", mother: "", spouse: "", role: "member", avatar_url: "",
     })
 
+    // Handle edit mode from URL params
+    useEffect(() => {
+        if (editMemberId) {
+            const memberToEdit = members.find(m => m.id === editMemberId)
+            if (memberToEdit) {
+                setEditingMember(memberToEdit)
+                setFormData({ ...memberToEdit })
+                setIsDialogOpen(true)
+            }
+        }
+    }, [editMemberId, members])
+
     const resetForm = () => {
         setFormData({
-            first_name: "", last_name: "", aliases: [], date_of_birth: "", place_of_birth: "", place_of_residence: "",
+            first_name: "", middle_name: "", last_name: "", aliases: [], date_of_birth: "", place_of_birth: "", place_of_residence: "",
             phone_numbers: [], email_addresses: [], education: "", occupation: "", gender: "", bio: "",
             father: "", mother: "", spouse: "", role: "member", avatar_url: "",
         })
         setEditingMember(null)
+        // Clear edit param from URL if present
+        if (editMemberId) {
+            router.replace('/dashboard/members', { scroll: false })
+        }
     }
 
     const openAddModal = () => { resetForm(); setIsDialogOpen(true) }
-    const openEditModal = (member: Member) => { setEditingMember(member); setFormData({ ...member }); setIsDialogOpen(true) }
+    const openEditModal = (member: Member) => {
+        setEditingMember(member)
+        setFormData({ ...member })
+        setIsDialogOpen(true)
+    }
 
     const handleSave = () => {
         if (!formData.first_name || !formData.last_name) return
@@ -276,8 +303,9 @@ export default function MembersPage() {
             setMembers(members.map(m => m.id === editingMember.id ? { ...m, ...formData } as Member : m))
         } else {
             const newMember: Member = {
-                id: (members.length + 1).toString(),
+                id: crypto.randomUUID(),
                 first_name: formData.first_name,
+                middle_name: formData.middle_name,
                 last_name: formData.last_name,
                 aliases: formData.aliases?.filter(a => a.trim() !== ""),
                 date_of_birth: formData.date_of_birth,
@@ -309,7 +337,10 @@ export default function MembersPage() {
                     <h1 className="text-4xl font-display font-medium tracking-tight">Family Members</h1>
                     <p className="text-muted-foreground">Manage family members and their access permissions</p>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                    if (!open) resetForm()
+                    setIsDialogOpen(open)
+                }}>
                     <DialogTrigger asChild>
                         <Button onClick={openAddModal} className="shadow-md hover:shadow-lg transition-shadow"><UserPlus className="mr-2 h-4 w-4" /> Add Member</Button>
                     </DialogTrigger>
@@ -337,14 +368,29 @@ export default function MembersPage() {
                                         <Plus className="h-5 w-5 text-primary-foreground" />
                                         <input
                                             type="file"
-                                            accept="image/*"
+                                            accept="image/jpeg,image/png,image/webp,image/gif"
                                             className="hidden"
                                             onChange={(e) => {
                                                 const file = e.target.files?.[0]
                                                 if (file) {
+                                                    // Validate file size (max 5MB)
+                                                    const MAX_SIZE = 5 * 1024 * 1024
+                                                    if (file.size > MAX_SIZE) {
+                                                        alert('File size must be less than 5MB')
+                                                        return
+                                                    }
+                                                    // Validate file type
+                                                    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+                                                    if (!validTypes.includes(file.type)) {
+                                                        alert('File must be an image (JPEG, PNG, WebP, or GIF)')
+                                                        return
+                                                    }
                                                     const reader = new FileReader()
                                                     reader.onloadend = () => {
                                                         setFormData({...formData, avatar_url: reader.result as string})
+                                                    }
+                                                    reader.onerror = () => {
+                                                        alert('Failed to read file. Please try again.')
                                                     }
                                                     reader.readAsDataURL(file)
                                                 }
@@ -355,10 +401,14 @@ export default function MembersPage() {
                             </div>
 
                             {/* Name */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label>First Name *</Label>
                                     <Input value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="rounded-xl" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Middle Name</Label>
+                                    <Input value={formData.middle_name} onChange={(e) => setFormData({...formData, middle_name: e.target.value})} className="rounded-xl" placeholder="Optional" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Last Name *</Label>
@@ -509,7 +559,7 @@ export default function MembersPage() {
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-xl"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="rounded-xl">
                                                 <DropdownMenuItem className="cursor-pointer rounded-lg" asChild><Link href={`/dashboard/members/${member.id}`}><Eye className="mr-2 h-4 w-4" /> View Profile</Link></DropdownMenuItem>
-                                                <DropdownMenuItem className="cursor-pointer rounded-lg" onClick={() => openEditModal(member)}><Pencil className="mr-2 h-4 w-4" /> Edit member</DropdownMenuItem>
+                                                <DropdownMenuItem className="cursor-pointer rounded-lg" asChild><Link href={`/dashboard/members?edit=${member.id}`}><Pencil className="mr-2 h-4 w-4" /> Edit member</Link></DropdownMenuItem>
                                                 <DropdownMenuItem className="cursor-pointer rounded-lg"><Mail className="mr-2 h-4 w-4" /> Send email</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -521,5 +571,13 @@ export default function MembersPage() {
                 </CardContent>
             </Card>
         </div>
+    )
+}
+
+export default function MembersPage() {
+    return (
+        <Suspense fallback={<div className="p-8">Loading...</div>}>
+            <MembersPageContent />
+        </Suspense>
     )
 }
