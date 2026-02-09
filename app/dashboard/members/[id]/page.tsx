@@ -1084,9 +1084,9 @@ export default function MemberDetailsPage() {
                             allMembers={mockMembers.filter(m => m.gender === 'female')}
                         />
                         <SearchableMemberSelector
-                            label="Children"
-                            selectedMembers={editForm.children || []}
-                            onChange={(ids) => setEditForm({...editForm, children: ids})}
+                            label="Spouse / Partner"
+                            selectedMembers={editForm.spouse ? [editForm.spouse] : []}
+                            onChange={(ids) => setEditForm({...editForm, spouse: ids[0] || ""})}
                             allMembers={mockMembers}
                         />
                         <div className="space-y-2">

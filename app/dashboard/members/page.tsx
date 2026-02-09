@@ -29,7 +29,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { Plus, MoreHorizontal, Mail, X, Users, Shield, Activity, UserPlus, Camera, MapPin, BookOpen, Briefcase, Heart, User, Pencil, Eye } from "lucide-react"
+import { Plus, MoreHorizontal, Mail, X, Users, Shield, Activity, UserPlus, Camera, Heart, User, Pencil, Eye } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -39,7 +39,6 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
 
 interface Member {
@@ -256,14 +255,14 @@ export default function MembersPage() {
     const [formData, setFormData] = useState<Partial<Member>>({
         first_name: "", last_name: "", aliases: [], date_of_birth: "", place_of_birth: "", place_of_residence: "",
         phone_numbers: [], email_addresses: [], education: "", occupation: "", gender: "", bio: "",
-        father: "", mother: "", spouse: "", children: [], siblings: [], role: "member",
+        father: "", mother: "", spouse: "", role: "member", avatar_url: "",
     })
 
     const resetForm = () => {
         setFormData({
             first_name: "", last_name: "", aliases: [], date_of_birth: "", place_of_birth: "", place_of_residence: "",
             phone_numbers: [], email_addresses: [], education: "", occupation: "", gender: "", bio: "",
-            father: "", mother: "", spouse: "", children: [], siblings: [], role: "member",
+            father: "", mother: "", spouse: "", role: "member", avatar_url: "",
         })
         setEditingMember(null)
     }
@@ -293,10 +292,9 @@ export default function MembersPage() {
                 father: formData.father,
                 mother: formData.mother,
                 spouse: formData.spouse,
-                children: formData.children,
-                siblings: formData.siblings,
                 role: formData.role || "member",
                 created_at: new Date().toISOString(),
+                avatar_url: formData.avatar_url,
             }
             setMembers([...members, newMember])
         }
@@ -315,130 +313,135 @@ export default function MembersPage() {
                     <DialogTrigger asChild>
                         <Button onClick={openAddModal} className="shadow-md hover:shadow-lg transition-shadow"><UserPlus className="mr-2 h-4 w-4" /> Add Member</Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[800px] max-h-[90vh] p-0 rounded-2xl">
-                        <DialogHeader className="px-6 pt-6 pb-2">
+                    <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto rounded-2xl">
+                        <DialogHeader>
                             <DialogTitle className="font-display text-2xl flex items-center gap-2">
                                 <UserPlus className="h-6 w-6 text-primary" />
                                 {editingMember ? 'Edit Member' : 'Add New Family Member'}
                             </DialogTitle>
-                            <DialogDescription className="text-muted-foreground">
-                                {editingMember ? 'Update the members information below.' : 'Create a comprehensive profile for your family member. All fields are optional except name.'}
+                            <DialogDescription>
+                                {editingMember ? 'Update the member information below.' : 'Create a profile for your family member. All fields are optional except name.'}
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="max-h-[calc(90vh-180px)] overflow-y-auto">
-                            <Tabs defaultValue="basic" className="px-6 pb-6">
-                                <TabsList className="grid w-full grid-cols-4 rounded-xl mb-4">
-                                    <TabsTrigger value="basic" className="rounded-lg">Basic Info</TabsTrigger>
-                                    <TabsTrigger value="contact" className="rounded-lg">Contact</TabsTrigger>
-                                    <TabsTrigger value="professional" className="rounded-lg">Professional</TabsTrigger>
-                                    <TabsTrigger value="relationships" className="rounded-lg">Relationships</TabsTrigger>
-                                </TabsList>
-
-                                <TabsContent value="basic" className="space-y-4 mt-0">
-                                    <div className="flex justify-center pb-4">
-                                        <div className="relative">
-                                            <Avatar className="h-24 w-24 ring-4 ring-primary/20 cursor-pointer hover:ring-primary/40 transition-all">
-                                                <AvatarFallback className="bg-muted text-muted-foreground"><Camera className="h-8 w-8" /></AvatarFallback>
-                                            </Avatar>
-                                            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-md"><Plus className="h-5 w-5 text-primary-foreground" /></div>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="firstName">First Name *</Label>
-                                            <Input id="firstName" placeholder="e.g., John" value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="rounded-xl" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="lastName">Last Name *</Label>
-                                            <Input id="lastName" placeholder="e.g., Miller" value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="rounded-xl" />
-                                        </div>
-                                    </div>
-                                    <DynamicListInput label="Aliases / Nicknames" items={formData.aliases || []} onChange={(aliases) => setFormData({...formData, aliases})} placeholder="e.g., Johnny, J.R." />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                                            <Input id="dateOfBirth" type="date" value={formData.date_of_birth} onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})} className="rounded-xl" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="gender">Gender</Label>
-                                            <Select value={formData.gender} onValueChange={(value) => setFormData({...formData, gender: value})}>
-                                                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select gender" /></SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    <SelectItem value="male">Male</SelectItem>
-                                                    <SelectItem value="female">Female</SelectItem>
-                                                    <SelectItem value="other">Other</SelectItem>
-                                                    <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="placeOfBirth">Place of Birth</Label>
-                                        <Input id="placeOfBirth" placeholder="e.g., Springfield, Illinois" value={formData.place_of_birth} onChange={(e) => setFormData({...formData, place_of_birth: e.target.value})} className="rounded-xl" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="placeOfResidence">Current Place of Residence</Label>
-                                        <div className="relative">
-                                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input id="placeOfResidence" placeholder="e.g., Chicago, Illinois" value={formData.place_of_residence} onChange={(e) => setFormData({...formData, place_of_residence: e.target.value})} className="rounded-xl pl-10" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="bio">Bio / Notes</Label>
-                                        <Textarea id="bio" placeholder="Add any additional information..." value={formData.bio} onChange={(e) => setFormData({...formData, bio: e.target.value})} className="rounded-xl min-h-[100px]" />
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="contact" className="space-y-4 mt-0">
-                                    <DynamicListInput label="Phone Numbers" items={formData.phone_numbers || []} onChange={(phone_numbers) => setFormData({...formData, phone_numbers})} placeholder="+1 (555) 000-0000" />
-                                    <DynamicListInput label="Email Addresses" items={formData.email_addresses || []} onChange={(email_addresses) => setFormData({...formData, email_addresses})} placeholder="email@example.com" />
-                                </TabsContent>
-
-                                <TabsContent value="professional" className="space-y-4 mt-0">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="education">Education</Label>
-                                        <div className="relative">
-                                            <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input id="education" placeholder="e.g., Bachelors in Computer Science" value={formData.education} onChange={(e) => setFormData({...formData, education: e.target.value})} className="rounded-xl pl-10" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="occupation">Current Occupation</Label>
-                                        <div className="relative">
-                                            <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input id="occupation" placeholder="e.g., Software Engineer" value={formData.occupation} onChange={(e) => setFormData({...formData, occupation: e.target.value})} className="rounded-xl pl-10" />
-                                        </div>
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="relationships" className="space-y-4 mt-0">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <RelationshipSelector label="Father" value={formData.father || ""} onChange={(father) => setFormData({...formData, father: father as string})} members={members.filter(m => m.gender === 'male')} />
-                                        <RelationshipSelector label="Mother" value={formData.mother || ""} onChange={(mother) => setFormData({...formData, mother: mother as string})} members={members.filter(m => m.gender === 'female')} />
-                                        <RelationshipSelector label="Spouse / Partner" value={formData.spouse || ""} onChange={(spouse) => setFormData({...formData, spouse: spouse as string})} members={members} />
-                                        <RelationshipSelector label="Children" value={formData.children || []} onChange={(children) => setFormData({...formData, children: children as string[]})} members={members} multiple />
-                                        <RelationshipSelector label="Siblings" value={formData.siblings || []} onChange={(siblings) => setFormData({...formData, siblings: siblings as string[]})} members={members} multiple />
-                                    </div>
-                                </TabsContent>
-
-                                <div className="pt-4 border-t mt-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="role">Access Role</Label>
-                                        <Select value={formData.role} onValueChange={(value: "admin" | "member" | "viewer") => setFormData({...formData, role: value})}>
-                                            <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select role" /></SelectTrigger>
-                                            <SelectContent className="rounded-xl">
-                                                <SelectItem value="admin"><div className="flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /><span>Admin - Full access</span></div></SelectItem>
-                                                <SelectItem value="member"><div className="flex items-center gap-2"><User className="h-4 w-4 text-primary" /><span>Member - Can view and edit</span></div></SelectItem>
-                                                <SelectItem value="viewer"><div className="flex items-center gap-2"><Heart className="h-4 w-4 text-primary" /><span>Viewer - View-only</span></div></SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                        <div className="grid gap-6 py-4">
+                            {/* Avatar Upload */}
+                            <div className="flex justify-center">
+                                <div className="relative">
+                                    <Avatar className="h-24 w-24 ring-4 ring-primary/20 cursor-pointer hover:ring-primary/40 transition-all">
+                                        <AvatarImage src={formData.avatar_url} />
+                                        <AvatarFallback className="bg-muted text-muted-foreground">
+                                            <Camera className="h-8 w-8" />
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-md cursor-pointer hover:bg-primary/90 transition-colors">
+                                        <Plus className="h-5 w-5 text-primary-foreground" />
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0]
+                                                if (file) {
+                                                    const reader = new FileReader()
+                                                    reader.onloadend = () => {
+                                                        setFormData({...formData, avatar_url: reader.result as string})
+                                                    }
+                                                    reader.readAsDataURL(file)
+                                                }
+                                            }}
+                                        />
+                                    </label>
                                 </div>
-                            </Tabs>
+                            </div>
+
+                            {/* Name */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>First Name *</Label>
+                                    <Input value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="rounded-xl" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Last Name *</Label>
+                                    <Input value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="rounded-xl" />
+                                </div>
+                            </div>
+
+                            {/* Aliases */}
+                            <DynamicListInput label="Aliases / Nicknames" items={formData.aliases || []} onChange={(aliases) => setFormData({...formData, aliases})} placeholder="e.g., Johnny, J.R." />
+
+                            {/* DOB & Gender */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Date of Birth</Label>
+                                    <Input type="date" value={formData.date_of_birth} onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})} className="rounded-xl" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Gender</Label>
+                                    <Select value={formData.gender} onValueChange={(value) => setFormData({...formData, gender: value})}>
+                                        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="male">Male</SelectItem>
+                                            <SelectItem value="female">Female</SelectItem>
+                                            <SelectItem value="other">Other</SelectItem>
+                                            <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* Birthplace & Residence */}
+                            <div className="space-y-2">
+                                <Label>Place of Birth</Label>
+                                <Input value={formData.place_of_birth} onChange={(e) => setFormData({...formData, place_of_birth: e.target.value})} className="rounded-xl" placeholder="e.g., Springfield, Illinois" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Current Place of Residence</Label>
+                                <Input value={formData.place_of_residence} onChange={(e) => setFormData({...formData, place_of_residence: e.target.value})} className="rounded-xl" placeholder="e.g., Chicago, Illinois" />
+                            </div>
+
+                            {/* Contact */}
+                            <DynamicListInput label="Phone Numbers" items={formData.phone_numbers || []} onChange={(phone_numbers) => setFormData({...formData, phone_numbers})} placeholder="+1 (555) 000-0000" />
+                            <DynamicListInput label="Email Addresses" items={formData.email_addresses || []} onChange={(email_addresses) => setFormData({...formData, email_addresses})} placeholder="email@example.com" />
+
+                            {/* Professional */}
+                            <div className="space-y-2">
+                                <Label>Education</Label>
+                                <Input value={formData.education} onChange={(e) => setFormData({...formData, education: e.target.value})} className="rounded-xl" placeholder="e.g., Bachelor's in Computer Science" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Occupation</Label>
+                                <Input value={formData.occupation} onChange={(e) => setFormData({...formData, occupation: e.target.value})} className="rounded-xl" placeholder="e.g., Software Engineer" />
+                            </div>
+
+                            {/* Bio */}
+                            <div className="space-y-2">
+                                <Label>Bio / Notes</Label>
+                                <Textarea value={formData.bio} onChange={(e) => setFormData({...formData, bio: e.target.value})} className="rounded-xl min-h-[100px]" placeholder="Add any additional information..." />
+                            </div>
+
+                            {/* Relationships */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <RelationshipSelector label="Father" value={formData.father || ""} onChange={(father) => setFormData({...formData, father: father as string})} members={members.filter(m => m.gender === 'male')} />
+                                <RelationshipSelector label="Mother" value={formData.mother || ""} onChange={(mother) => setFormData({...formData, mother: mother as string})} members={members.filter(m => m.gender === 'female')} />
+                                <RelationshipSelector label="Spouse / Partner" value={formData.spouse || ""} onChange={(spouse) => setFormData({...formData, spouse: spouse as string})} members={members} />
+                            </div>
+
+                            {/* Role */}
+                            <div className="space-y-2">
+                                <Label>Access Role</Label>
+                                <Select value={formData.role} onValueChange={(value: "admin" | "member" | "viewer") => setFormData({...formData, role: value})}>
+                                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select role" /></SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="admin"><div className="flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /><span>Admin - Full access</span></div></SelectItem>
+                                        <SelectItem value="member"><div className="flex items-center gap-2"><User className="h-4 w-4 text-primary" /><span>Member - Can view and edit</span></div></SelectItem>
+                                        <SelectItem value="viewer"><div className="flex items-center gap-2"><Heart className="h-4 w-4 text-primary" /><span>Viewer - View-only</span></div></SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <DialogFooter className="px-6 pb-6 pt-2 border-t">
+                        <DialogFooter>
                             <Button variant="outline" className="rounded-xl" onClick={() => { resetForm(); setIsDialogOpen(false) }}>Cancel</Button>
-                            <Button type="submit" className="rounded-xl" disabled={!formData.first_name || !formData.last_name} onClick={handleSave}>
+                            <Button className="rounded-xl" disabled={!formData.first_name || !formData.last_name} onClick={handleSave}>
                                 {editingMember ? 'Save Changes' : 'Save Member'}
                             </Button>
                         </DialogFooter>
