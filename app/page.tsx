@@ -93,7 +93,7 @@ export default function Home() {
             {features.map((feature, index) => (
               <div
                 key={feature.title}
-                className="group p-6 rounded-2xl bg-card border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 animate-fade-in-up"
+                className="group p-6 rounded-2xl bg-card border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 animate-fade-in-up cursor-pointer"
                 style={{ animationDelay: `${400 + index * 100}ms` }}
               >
                 <div className={`w-12 h-12 rounded-xl ${feature.color} flex items-center justify-center mb-4`}>
@@ -118,13 +118,13 @@ export default function Home() {
             © 2024 Family Manager. Built with care for families.
           </p>
           <div className="flex items-center gap-6">
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
               Privacy
             </a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
               Terms
             </a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
               Support
             </a>
           </div>

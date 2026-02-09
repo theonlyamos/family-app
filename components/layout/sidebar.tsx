@@ -60,7 +60,7 @@ export function Sidebar() {
     const pathname = usePathname()
 
     return (
-        <div className="flex flex-col w-64 border-r border-border min-h-screen bg-[oklch(0.97_0.006_80)] hidden md:flex transition-all duration-300">
+        <div className="flex flex-col w-64 border-r border-border min-h-screen bg-sidebar hidden md:flex transition-all duration-300">
             {/* Profile Section */}
             <div className="p-6 flex items-center gap-3 mb-6">
                 <Avatar className="h-11 w-11 ring-2 ring-primary/20 ring-offset-2 ring-offset-background transition-all duration-300">
@@ -91,8 +91,8 @@ export function Sidebar() {
                                 "w-full justify-start font-medium rounded-xl transition-all duration-200 ease-out group",
                                 "relative overflow-hidden",
                                 isActive
-                                    ? "bg-[oklch(0.94_0.02_145)] text-[oklch(0.35_0.06_145)] hover:bg-[oklch(0.92_0.03_145)] shadow-sm"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                                    ? "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80 shadow-sm"
+                                    : "text-sidebar-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                             )}
                             style={{
                                 animationDelay: `${index * 50}ms`,
@@ -103,7 +103,7 @@ export function Sidebar() {
                                 {/* Active indicator bar */}
                                 <span 
                                     className={cn(
-                                        "absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-full bg-primary transition-all duration-300",
+                                        "absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-full bg-sidebar-primary transition-all duration-300",
                                         isActive ? "h-6 opacity-100" : "h-0 opacity-0"
                                     )}
                                 />
@@ -111,8 +111,8 @@ export function Sidebar() {
                                     className={cn(
                                         "mr-3 h-5 w-5 transition-all duration-200",
                                         isActive 
-                                            ? "text-primary" 
-                                            : "text-muted-foreground group-hover:text-foreground"
+                                            ? "text-sidebar-primary" 
+                                            : "text-sidebar-foreground group-hover:text-sidebar-foreground"
                                     )} 
                                 />
                                 <span className="relative z-10">{item.title}</span>
@@ -123,17 +123,17 @@ export function Sidebar() {
             </nav>
 
             {/* Footer Actions */}
-            <div className="p-3 mt-auto space-y-1 border-t border-border/50 bg-background/50">
+            <div className="p-3 mt-auto space-y-1 border-t border-sidebar-border bg-sidebar/50">
                 <Button 
                     variant="ghost" 
-                    className="w-full justify-start text-muted-foreground hover:text-foreground rounded-xl transition-all duration-200"
+                    className="w-full justify-start text-sidebar-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-xl transition-all duration-200"
                 >
                     <Settings className="mr-3 h-5 w-5" />
                     Settings
                 </Button>
                 <Button 
                     variant="ghost" 
-                    className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-200"
+                    className="w-full justify-start text-sidebar-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-200"
                 >
                     <LogOut className="mr-3 h-5 w-5" />
                     Log out

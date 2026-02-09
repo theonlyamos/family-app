@@ -1,3 +1,5 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -8,9 +10,51 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Bell, Moon } from "lucide-react"
+import { Bell, Moon, Sun, Laptop } from "lucide-react"
+import { useTheme } from "next-themes"
+import { useState, useEffect } from "react"
 
 export function Header() {
+    const { theme, setTheme, resolvedTheme } = useTheme()
+    const [mounted, setMounted] = useState(false)
+
+    // Prevent hydration mismatch
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    // Get current icon based on theme
+    const getThemeIcon = () => {
+        if (!mounted) return <Sun className="h-5 w-5" />
+        
+        const currentTheme = resolvedTheme || theme
+        if (currentTheme === "dark") {
+            return <Moon className="h-5 w-5" />
+        }
+        return <Sun className="h-5 w-5" />
+    }
+
+    // Cycle through themes: light -> dark -> system -> light
+    const cycleTheme = () => {
+        if (theme === "light") {
+            setTheme("dark")
+        } else if (theme === "dark") {
+            setTheme("system")
+        } else {
+            setTheme("light")
+        }
+    }
+
+    // Get theme label
+    const getThemeLabel = () => {
+        if (!mounted) return "Light"
+        const currentTheme = resolvedTheme || theme
+        if (theme === "system") {
+            return `System (${currentTheme})`
+        }
+        return theme ? theme.charAt(0).toUpperCase() + theme.slice(1) : "Light"
+    }
+
     return (
         <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-30">
             <div className="flex h-16 items-center px-6 gap-4">
@@ -29,14 +73,48 @@ export function Header() {
                         <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full animate-gentle-pulse" />
                     </Button>
                     
-                    {/* Theme toggle placeholder */}
-                    <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all duration-200"
-                    >
-                        <Moon className="h-5 w-5" />
-                    </Button>
+                    {/* Theme toggle with dropdown */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="relative rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all duration-200"
+                            >
+                                {getThemeIcon()}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl">
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                Current: {getThemeLabel()}
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                                className="rounded-lg cursor-pointer"
+                                onClick={() => setTheme("light")}
+                            >
+                                <Sun className="mr-2 h-4 w-4" />
+                                Light
+                                {theme === "light" && <span className="ml-auto text-primary">●</span>}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                className="rounded-lg cursor-pointer"
+                                onClick={() => setTheme("dark")}
+                            >
+                                <Moon className="mr-2 h-4 w-4" />
+                                Dark
+                                {theme === "dark" && <span className="ml-auto text-primary">●</span>}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                className="rounded-lg cursor-pointer"
+                                onClick={() => setTheme("system")}
+                            >
+                                <Laptop className="mr-2 h-4 w-4" />
+                                System
+                                {theme === "system" && <span className="ml-auto text-primary">●</span>}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
                     {/* User dropdown */}
                     <DropdownMenu>

@@ -152,7 +152,7 @@ function SearchableMemberSelector({
                             <button
                                 type="button"
                                 onClick={() => removeMember(member.id)}
-                                className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                                className="hover:bg-primary/20 rounded-full p-0.5 transition-colors cursor-pointer"
                             >
                                 <X className="h-3 w-3" />
                             </button>

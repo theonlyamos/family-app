@@ -16,7 +16,7 @@ export default function DocumentDetailsPage() {
         <div className="space-y-8 animate-fade-in-up">
             {/* Breadcrumbs */}
             <nav className="flex items-center text-sm text-muted-foreground animate-fade-in-up">
-                <Link href="/dashboard/vault" className="hover:text-primary transition-colors">
+                <Link href="/dashboard/vault" className="hover:text-primary transition-colors cursor-pointer">
                     Documents
                 </Link>
                 <ChevronRight className="h-4 w-4 mx-2" />
