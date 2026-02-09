@@ -60,22 +60,25 @@ export function Sidebar() {
     const pathname = usePathname()
 
     return (
-        <div className="flex flex-col w-64 border-r min-h-screen bg-background hidden md:flex">
+        <div className="flex flex-col w-64 border-r border-border min-h-screen bg-[oklch(0.97_0.006_80)] hidden md:flex transition-all duration-300">
             {/* Profile Section */}
             <div className="p-6 flex items-center gap-3 mb-6">
-                <Avatar className="h-10 w-10">
+                <Avatar className="h-11 w-11 ring-2 ring-primary/20 ring-offset-2 ring-offset-background transition-all duration-300">
                     <AvatarImage src="/avatars/01.png" alt="@miller" />
-                    <AvatarFallback>MF</AvatarFallback>
+                    <AvatarFallback className="bg-primary/10 text-primary font-medium">MF</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
-                    <span className="font-semibold text-sm">The Miller Family</span>
-                    <span className="text-xs text-muted-foreground">Premium Plan</span>
+                    <span className="font-semibold text-sm tracking-tight">The Miller Family</span>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-gentle-pulse"></span>
+                        Premium Plan
+                    </span>
                 </div>
             </div>
 
             {/* Navigation */}
-            <div className="flex-1 px-4 space-y-1">
-                {sidebarItems.map((item) => {
+            <nav className="flex-1 px-3 space-y-1">
+                {sidebarItems.map((item, index) => {
                     const isActive = item.href === "/dashboard"
                         ? pathname === "/dashboard"
                         : pathname.startsWith(item.href)
@@ -85,29 +88,53 @@ export function Sidebar() {
                             key={item.href}
                             variant="ghost"
                             className={cn(
-                                "w-full justify-start font-medium",
+                                "w-full justify-start font-medium rounded-xl transition-all duration-200 ease-out group",
+                                "relative overflow-hidden",
                                 isActive
-                                    ? "bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                                    : "text-muted-foreground hover:text-foreground"
+                                    ? "bg-[oklch(0.94_0.02_145)] text-[oklch(0.35_0.06_145)] hover:bg-[oklch(0.92_0.03_145)] shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                             )}
+                            style={{
+                                animationDelay: `${index * 50}ms`,
+                            }}
                             asChild
                         >
-                            <Link href={item.href}>
-                                <item.icon className={cn("mr-3 h-5 w-5", isActive ? "text-blue-600" : "")} />
-                                {item.title}
+                            <Link href={item.href} className="relative">
+                                {/* Active indicator bar */}
+                                <span 
+                                    className={cn(
+                                        "absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-full bg-primary transition-all duration-300",
+                                        isActive ? "h-6 opacity-100" : "h-0 opacity-0"
+                                    )}
+                                />
+                                <item.icon 
+                                    className={cn(
+                                        "mr-3 h-5 w-5 transition-all duration-200",
+                                        isActive 
+                                            ? "text-primary" 
+                                            : "text-muted-foreground group-hover:text-foreground"
+                                    )} 
+                                />
+                                <span className="relative z-10">{item.title}</span>
                             </Link>
                         </Button>
                     )
                 })}
-            </div>
+            </nav>
 
             {/* Footer Actions */}
-            <div className="p-4 mt-auto space-y-1">
-                <Button variant="ghost" className="w-full justify-start text-muted-foreground">
+            <div className="p-3 mt-auto space-y-1 border-t border-border/50 bg-background/50">
+                <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-muted-foreground hover:text-foreground rounded-xl transition-all duration-200"
+                >
                     <Settings className="mr-3 h-5 w-5" />
                     Settings
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-muted-foreground">
+                <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-200"
+                >
                     <LogOut className="mr-3 h-5 w-5" />
                     Log out
                 </Button>
