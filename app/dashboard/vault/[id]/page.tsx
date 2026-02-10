@@ -28,7 +28,7 @@ export default function DocumentDetailsPage() {
     const router = useRouter()
     const id = params.id as Id<"documents">
 
-    const document = useQuery(api.documents.getById, { id })
+    const doc = useQuery(api.documents.getById, { id })
     const members = useQuery(api.members.list)
 
     const updateDocument = useMutation(api.documents.update)
@@ -38,7 +38,11 @@ export default function DocumentDetailsPage() {
     const [editName, setEditName] = useState("")
     const [editDescription, setEditDescription] = useState("")
 
-    if (document === undefined) {
+    const fileUrl = useQuery(api.documents.getFileUrl,
+        doc?.storageId ? { storageId: doc.storageId } : "skip"
+    )
+
+    if (doc === undefined) {
         return (
             <div className="space-y-8 animate-fade-in-up">
                 <div className="space-y-1">
@@ -48,7 +52,7 @@ export default function DocumentDetailsPage() {
         )
     }
 
-    if (document === null) {
+    if (doc === null) {
         return (
             <div className="space-y-8 animate-fade-in-up">
                 <div className="text-center py-16">
@@ -61,12 +65,12 @@ export default function DocumentDetailsPage() {
     }
 
     const associatedMembers = (members ?? []).filter(m =>
-        document.associatedMemberIds?.includes(m._id)
+        doc.associatedMemberIds?.includes(m._id)
     )
 
     const handleEditOpen = () => {
-        setEditName(document.name)
-        setEditDescription(document.description || "")
+        setEditName(doc.name)
+        setEditDescription(doc.description || "")
         setIsEditOpen(true)
     }
 
@@ -86,6 +90,21 @@ export default function DocumentDetailsPage() {
         }
     }
 
+    const handleDownload = () => {
+        if (!fileUrl) return
+        const link = document.createElement("a")
+        link.href = fileUrl
+        link.download = doc.name
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+    }
+
+    const handlePreview = () => {
+        if (!fileUrl) return
+        window.open(fileUrl, "_blank")
+    }
+
     return (
         <div className="space-y-8 animate-fade-in-up">
             {/* Breadcrumbs */}
@@ -94,9 +113,9 @@ export default function DocumentDetailsPage() {
                     Documents
                 </Link>
                 <ChevronRight className="h-4 w-4 mx-2" />
-                <span className="hover:text-primary cursor-pointer transition-colors">{document.category}</span>
+                <span className="hover:text-primary cursor-pointer transition-colors">{doc.category}</span>
                 <ChevronRight className="h-4 w-4 mx-2" />
-                <span className="text-foreground font-medium">{document.name}</span>
+                <span className="text-foreground font-medium">{doc.name}</span>
             </nav>
 
             <Card>
@@ -106,7 +125,7 @@ export default function DocumentDetailsPage() {
                         <div className="space-y-3">
                             <div className="flex items-center gap-3 flex-wrap">
                                 <h1 className="text-3xl md:text-4xl font-display font-medium tracking-tight">
-                                    {document.name}
+                                    {doc.name}
                                 </h1>
                                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[oklch(0.94_0.02_145)]">
                                     <Lock className="h-3.5 w-3.5 text-primary" />
@@ -115,16 +134,25 @@ export default function DocumentDetailsPage() {
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
                                 <Badge variant="blue" className="font-normal">
-                                    {document.category}
+                                    {doc.category}
                                 </Badge>
-                                <span className="text-sm text-muted-foreground">• {document.type} Document</span>
+                                <span className="text-sm text-muted-foreground">• {doc.type} Document</span>
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            <Button variant="outline" className="rounded-xl">
+                            <Button
+                                variant="outline"
+                                className="rounded-xl"
+                                disabled={!fileUrl}
+                                onClick={handlePreview}
+                            >
                                 <Eye className="mr-2 h-4 w-4" /> Preview
                             </Button>
-                            <Button className="rounded-xl shadow-md hover:shadow-lg transition-shadow">
+                            <Button
+                                className="rounded-xl shadow-md hover:shadow-lg transition-shadow"
+                                disabled={!fileUrl}
+                                onClick={handleDownload}
+                            >
                                 <Download className="mr-2 h-4 w-4" /> Download
                             </Button>
                         </div>
@@ -134,32 +162,32 @@ export default function DocumentDetailsPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 rounded-2xl bg-muted/50">
                         <div className="space-y-1.5">
                             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">File Size</p>
-                            <p className="font-medium">{document.size}</p>
+                            <p className="font-medium">{doc.size}</p>
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">File Type</p>
-                            <p className="font-medium">{document.type}</p>
+                            <p className="font-medium">{doc.type}</p>
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Upload Date</p>
                             <p className="font-medium">
-                                {new Date(document._creationTime).toLocaleDateString("en-US", {
+                                {new Date(doc._creationTime).toLocaleDateString("en-US", {
                                     year: "numeric", month: "long", day: "numeric"
                                 })}
                             </p>
                         </div>
                         <div className="space-y-1.5">
                             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Category</p>
-                            <p className="font-medium">{document.category}</p>
+                            <p className="font-medium">{doc.category}</p>
                         </div>
                     </div>
 
                     {/* Description */}
-                    {document.description && (
+                    {doc.description && (
                         <div className="space-y-3">
                             <h3 className="font-display text-lg font-medium">Description</h3>
                             <p className="text-muted-foreground leading-relaxed">
-                                {document.description}
+                                {doc.description}
                             </p>
                         </div>
                     )}

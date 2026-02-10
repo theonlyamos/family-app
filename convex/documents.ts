@@ -29,6 +29,19 @@ export const listByMemberId = query({
     },
 });
 
+export const generateUploadUrl = mutation(async (ctx) => {
+    await ensureAuthenticated(ctx);
+    return await ctx.storage.generateUploadUrl();
+});
+
+export const getFileUrl = query({
+    args: { storageId: v.id("_storage") },
+    handler: async (ctx, args) => {
+        await ensureAuthenticated(ctx);
+        return await ctx.storage.getUrl(args.storageId);
+    },
+});
+
 export const create = mutation({
     args: {
         name: v.string(),
@@ -38,11 +51,35 @@ export const create = mutation({
         description: v.optional(v.string()),
         storageId: v.optional(v.id("_storage")),
         associatedMemberIds: v.optional(v.array(v.id("members"))),
-        uploadedBy: v.id("users"),
     },
     handler: async (ctx, args) => {
-        await ensureAuthenticated(ctx);
-        return await ctx.db.insert("documents", args);
+        const identity = await ensureAuthenticated(ctx);
+
+        if (!identity) {
+            throw new Error("Unauthenticated call to create document");
+        }
+
+        // Look up or auto-create the app-level user record
+        let user = await ctx.db
+            .query("users")
+            .withIndex("by_externalId", (q) => q.eq("externalId", identity.subject))
+            .first();
+
+        if (!user) {
+            // Auto-provision user from auth identity
+            const userId = await ctx.db.insert("users", {
+                externalId: identity.subject,
+                email: identity.email ?? "unknown@example.com",
+                name: identity.name ?? undefined,
+                role: "admin",
+            });
+            user = await ctx.db.get(userId);
+        }
+
+        return await ctx.db.insert("documents", {
+            ...args,
+            uploadedBy: user!._id,
+        });
     },
 });
 
@@ -56,7 +93,6 @@ export const update = mutation({
         description: v.optional(v.string()),
         storageId: v.optional(v.id("_storage")),
         associatedMemberIds: v.optional(v.array(v.id("members"))),
-        uploadedBy: v.optional(v.id("users")),
     },
     handler: async (ctx, args) => {
         await ensureAuthenticated(ctx);

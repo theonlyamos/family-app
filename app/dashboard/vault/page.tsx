@@ -181,6 +181,12 @@ export default function VaultPage() {
         description: "",
         associatedMembers: [] as string[]
     })
+    const [selectedFile, setSelectedFile] = useState<File | null>(null)
+    const [isUploading, setIsUploading] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const generateUploadUrl = useMutation(api.documents.generateUploadUrl)
+    const createDocument = useMutation(api.documents.create)
 
     const filteredDocuments = (documents ?? []).filter((doc) => {
         const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -189,17 +195,83 @@ export default function VaultPage() {
         return matchesSearch && matchesFilter
     })
 
-    const handleUpload = () => {
-        // Handle upload logic here — file storage integration pending
-        console.log("Uploading document:", uploadForm)
-        setIsUploadDialogOpen(false)
-        setUploadForm({
-            title: "",
-            type: "",
-            category: "",
-            description: "",
-            associatedMembers: []
-        })
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            setSelectedFile(file)
+            // Auto-fill title if empty
+            if (!uploadForm.title) {
+                setUploadForm(prev => ({ ...prev, title: file.name }))
+            }
+        }
+    }
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+    }
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const file = e.dataTransfer.files?.[0]
+        if (file) {
+            setSelectedFile(file)
+            if (!uploadForm.title) {
+                setUploadForm(prev => ({ ...prev, title: file.name }))
+            }
+        }
+    }
+
+    const handleUpload = async () => {
+        if (!selectedFile) return
+
+        try {
+            setIsUploading(true)
+
+            // 1. Get short-lived upload URL
+            const postUrl = await generateUploadUrl()
+
+            // 2. Upload file to Convex storage
+            const result = await fetch(postUrl, {
+                method: "POST",
+                headers: { "Content-Type": selectedFile.type },
+                body: selectedFile,
+            })
+
+            if (!result.ok) {
+                throw new Error(`Upload failed: ${result.statusText}`)
+            }
+
+            const { storageId } = await result.json()
+
+            // 3. Create document record
+            await createDocument({
+                name: uploadForm.title,
+                type: uploadForm.type || "Other",
+                size: formatBytes(selectedFile.size),
+                category: uploadForm.category || "Personal",
+                description: uploadForm.description,
+                storageId: storageId,
+                associatedMemberIds: uploadForm.associatedMembers as Id<"members">[],
+            })
+
+            console.log("Document uploaded successfully")
+            setIsUploadDialogOpen(false)
+            setUploadForm({
+                title: "",
+                type: "",
+                category: "",
+                description: "",
+                associatedMembers: []
+            })
+            setSelectedFile(null)
+        } catch (error) {
+            console.error("Failed to upload document:", error)
+            alert("Failed to upload document. Please try again.")
+        } finally {
+            setIsUploading(false)
+        }
     }
 
     if (documents === undefined) {
@@ -329,10 +401,49 @@ export default function VaultPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>File Upload</Label>
-                                        <div className="border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center justify-center text-center hover:bg-muted/50 cursor-pointer transition-all duration-200 h-[200px]">
-                                            <CloudUpload className="h-8 w-8 text-muted-foreground mb-2" />
-                                            <p className="text-sm font-medium text-primary">Click to upload <span className="text-muted-foreground">or drag and drop</span></p>
-                                            <p className="text-xs text-muted-foreground mt-1">PDF, PNG, JPG, DOCX (MAX. 10MB)</p>
+                                        <div
+                                            className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center transition-all duration-200 h-[200px] ${selectedFile
+                                                    ? "border-primary bg-primary/5"
+                                                    : "border-border hover:bg-muted/50 cursor-pointer"
+                                                }`}
+                                            onClick={() => !selectedFile && fileInputRef.current?.click()}
+                                            onDragOver={handleDragOver}
+                                            onDrop={handleDrop}
+                                        >
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                className="hidden"
+                                                onChange={handleFileSelect}
+                                                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                                            />
+
+                                            {selectedFile ? (
+                                                <div className="relative w-full h-full flex flex-col items-center justify-center">
+                                                    <FileText className="h-8 w-8 text-primary mb-2" />
+                                                    <p className="text-sm font-medium text-foreground truncate max-w-full px-2">
+                                                        {selectedFile.name}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        {formatBytes(selectedFile.size)}
+                                                    </p>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            setSelectedFile(null)
+                                                        }}
+                                                        className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <CloudUpload className="h-8 w-8 text-muted-foreground mb-2" />
+                                                    <p className="text-sm font-medium text-primary">Click to upload <span className="text-muted-foreground">or drag and drop</span></p>
+                                                    <p className="text-xs text-muted-foreground mt-1">PDF, PNG, JPG, DOCX (MAX. 10MB)</p>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="space-y-2">
@@ -359,16 +470,26 @@ export default function VaultPage() {
                                             description: "",
                                             associatedMembers: []
                                         })
+                                        setSelectedFile(null)
                                     }}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     className="rounded-xl"
-                                    disabled={!uploadForm.title}
+                                    disabled={!uploadForm.title || !selectedFile || isUploading}
                                     onClick={handleUpload}
                                 >
-                                    <Upload className="mr-2 h-4 w-4" /> Upload Document
+                                    {isUploading ? (
+                                        <>
+                                            <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                            Uploading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="mr-2 h-4 w-4" /> Upload Document
+                                        </>
+                                    )}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -436,4 +557,16 @@ export default function VaultPage() {
             )}
         </div>
     )
+}
+
+function formatBytes(bytes: number, decimals = 1) {
+    if (bytes === 0) return '0 B';
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
