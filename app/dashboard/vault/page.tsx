@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Doc, Id } from "@/convex/_generated/dataModel"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { FileText, Lock, Upload, ShieldCheck, Search, CloudUpload, Plus, X, User } from "lucide-react"
+import { FileText, Lock, Upload, ShieldCheck, Search, CloudUpload, Plus, X, User, FileImage, FileType, Stamp, Landmark, File } from "lucide-react"
 
 // Define valid variants for Badge component
 type ValidBadgeVariant = "default" | "secondary" | "destructive" | "outline" | "ghost" | "link" | "sage" | "terracotta" | "gold" | "blue" | "rose" | null | undefined
@@ -40,6 +40,17 @@ const getCategoryVariant = (category: string): ValidBadgeVariant => {
         case "Legal": return "blue"
         case "Personal": return "sage"
         default: return "secondary"
+    }
+}
+
+const getFileTypeIcon = (type: string) => {
+    switch (type) {
+        case "PDF": return FileType
+        case "DOCX": return FileText
+        case "Image": return FileImage
+        case "Passport": return Stamp
+        case "Deed": return Landmark
+        default: return File
     }
 }
 
@@ -165,13 +176,23 @@ function SearchableMemberSelector({
     )
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+const ALLOWED_FILE_TYPES = [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/png",
+    "image/jpeg",
+    "image/jpg"
+]
+
 export default function VaultPage() {
     const [searchQuery, setSearchQuery] = useState("")
     const [filterType, setFilterType] = useState("All Document Types")
     const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
     const documents = useQuery(api.documents.list)
-    const members = useQuery(api.members.list)
+    const members = useQuery(api.members.list, isUploadDialogOpen ? {} : "skip")
 
     // Upload form state
     const [uploadForm, setUploadForm] = useState({
@@ -195,9 +216,29 @@ export default function VaultPage() {
         return matchesSearch && matchesFilter
     })
 
+    const validateFile = (file: File): boolean => {
+        if (file.size > MAX_FILE_SIZE) {
+            alert(`File size must be less than 10MB. Current size: ${formatBytes(file.size)}`)
+            return false
+        }
+
+        // Optional: Check file type if needed, though 'accept' attribute handles generic browsing
+        // Drag and drop bypasses 'accept', so we check here
+        if (!ALLOWED_FILE_TYPES.includes(file.type) && !file.name.match(/\.(pdf|doc|docx|png|jpg|jpeg)$/i)) {
+            alert("Invalid file type. Please upload a PDF, Word document, or Image.")
+            return false
+        }
+
+        return true
+    }
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
+            if (!validateFile(file)) {
+                if (fileInputRef.current) fileInputRef.current.value = ""
+                return
+            }
             setSelectedFile(file)
             // Auto-fill title if empty
             if (!uploadForm.title) {
@@ -216,6 +257,7 @@ export default function VaultPage() {
         e.stopPropagation()
         const file = e.dataTransfer.files?.[0]
         if (file) {
+            if (!validateFile(file)) return
             setSelectedFile(file)
             if (!uploadForm.title) {
                 setUploadForm(prev => ({ ...prev, title: file.name }))
@@ -253,7 +295,9 @@ export default function VaultPage() {
                 category: uploadForm.category || "Personal",
                 description: uploadForm.description,
                 storageId: storageId,
-                associatedMemberIds: uploadForm.associatedMembers as Id<"members">[],
+                associatedMemberIds: uploadForm.associatedMembers.length > 0
+                    ? uploadForm.associatedMembers as Id<"members">[]
+                    : undefined,
             })
 
             console.log("Document uploaded successfully")
@@ -266,6 +310,7 @@ export default function VaultPage() {
                 associatedMembers: []
             })
             setSelectedFile(null)
+            if (fileInputRef.current) fileInputRef.current.value = ""
         } catch (error) {
             console.error("Failed to upload document:", error)
             alert("Failed to upload document. Please try again.")
@@ -403,8 +448,8 @@ export default function VaultPage() {
                                         <Label>File Upload</Label>
                                         <div
                                             className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center transition-all duration-200 h-[200px] ${selectedFile
-                                                    ? "border-primary bg-primary/5"
-                                                    : "border-border hover:bg-muted/50 cursor-pointer"
+                                                ? "border-primary bg-primary/5"
+                                                : "border-border hover:bg-muted/50 cursor-pointer"
                                                 }`}
                                             onClick={() => !selectedFile && fileInputRef.current?.click()}
                                             onDragOver={handleDragOver}
@@ -420,7 +465,10 @@ export default function VaultPage() {
 
                                             {selectedFile ? (
                                                 <div className="relative w-full h-full flex flex-col items-center justify-center">
-                                                    <FileText className="h-8 w-8 text-primary mb-2" />
+                                                    {(() => {
+                                                        const Icon = getFileTypeIcon(uploadForm.type)
+                                                        return <Icon className="h-8 w-8 text-primary mb-2" />
+                                                    })()}
                                                     <p className="text-sm font-medium text-foreground truncate max-w-full px-2">
                                                         {selectedFile.name}
                                                     </p>
@@ -522,9 +570,14 @@ export default function VaultPage() {
                             style={{ animationDelay: `${index * 50}ms` }}
                         >
                             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                                <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-200">
-                                    <FileText className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
-                                </div>
+                                {(() => {
+                                    const Icon = getFileTypeIcon(doc.type)
+                                    return (
+                                        <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-200">
+                                            <Icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
+                                        </div>
+                                    )
+                                })()}
                                 <Lock className="h-4 w-4 text-muted-foreground/50" />
                             </CardHeader>
                             <CardContent className="pt-4">

@@ -71,7 +71,7 @@ export const create = mutation({
                 externalId: identity.subject,
                 email: identity.email ?? "unknown@example.com",
                 name: identity.name ?? undefined,
-                role: "admin",
+                role: "member",
             });
             user = await ctx.db.get(userId);
         }
@@ -105,6 +105,10 @@ export const remove = mutation({
     args: { id: v.id("documents") },
     handler: async (ctx, args) => {
         await ensureAuthenticated(ctx);
+        const doc = await ctx.db.get(args.id);
+        if (doc && doc.storageId) {
+            await ctx.storage.delete(doc.storageId);
+        }
         await ctx.db.delete(args.id);
     },
 });
