@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -16,6 +16,7 @@ import {
     User,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { authClient } from "@/lib/auth-client"
 
 const sidebarItems = [
     {
@@ -58,20 +59,33 @@ const sidebarItems = [
 
 export function Sidebar() {
     const pathname = usePathname()
+    const router = useRouter()
+    const { data: session } = authClient.useSession()
+
+    const handleLogout = async () => {
+        await authClient.signOut()
+        router.push("/login")
+        router.refresh()
+    }
+
+    const user = session?.user
+    const userInitials = user?.name ? user.name.split(" ").map(n => n[0]).join("").toUpperCase() : user?.email?.[0].toUpperCase() || "U"
 
     return (
         <div className="flex flex-col w-64 border-r border-border min-h-screen bg-sidebar hidden md:flex transition-all duration-300">
             {/* Profile Section */}
             <div className="p-6 flex items-center gap-3 mb-6">
                 <Avatar className="h-11 w-11 ring-2 ring-primary/20 ring-offset-2 ring-offset-background transition-all duration-300">
-                    <AvatarImage src="/avatars/01.png" alt="@miller" />
-                    <AvatarFallback className="bg-primary/10 text-primary font-medium">MF</AvatarFallback>
+                    <AvatarImage src={user?.image || ""} alt={user?.name || user?.email || ""} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-medium">{userInitials}</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
-                    <span className="font-semibold text-sm tracking-tight">The Miller Family</span>
+                    <span className="font-semibold text-sm tracking-tight">
+                        {user?.name || "Family Member"}
+                    </span>
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-gentle-pulse"></span>
-                        Premium Plan
+                        {user?.email || "No email"}
                     </span>
                 </div>
             </div>
@@ -134,6 +148,7 @@ export function Sidebar() {
                 <Button 
                     variant="ghost" 
                     className="w-full justify-start text-sidebar-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-200"
+                    onClick={handleLogout}
                 >
                     <LogOut className="mr-3 h-5 w-5" />
                     Log out

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Fraunces, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ConvexClientProvider } from "./ConvexClientProvider";
+import { ConvexClientProvider } from "@/components/ConvexClientProvider";
+import { getToken } from "@/lib/auth-server";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -21,11 +22,12 @@ export const metadata: Metadata = {
   description: "Manage your family members, events, and assets in one place.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const token = await getToken();
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -37,7 +39,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ConvexClientProvider>
+          <ConvexClientProvider initialToken={token}>
             {children}
           </ConvexClientProvider>
         </ThemeProvider>

@@ -1,4 +1,12 @@
-import { QueryCtx, MutationCtx } from "./_generated/server";
+import { QueryCtx, MutationCtx, query } from "./_generated/server";
+
+export const getCurrentUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    return identity;
+  },
+});
 
 /**
  * Ensures the caller is authenticated.

@@ -12,6 +12,7 @@
   /* Typography */
   --font-sans: var(--font-instrument);
   --font-display: var(--font-fraunces);
+  --font-serif: var(--font-fraunces);
   
   /* Color mappings */
   --color-background: var(--background);
@@ -120,6 +121,15 @@
                  0 4px 12px -2px oklch(0.25 0.02 50 / 0.06);
   --shadow-elevated: 0 4px 12px -2px oklch(0.25 0.02 50 / 0.1),
                      0 8px 24px -4px oklch(0.25 0.02 50 / 0.08);
+  /* Auth Page Colors */
+  --auth-panel: oklch(0.98 0.005 85);           /* Warm cream #FAF8F5 */
+  --auth-panel-foreground: oklch(0.25 0.02 50); /* Deep warm charcoal */
+  --auth-panel-muted: oklch(0.50 0.02 50);      /* Muted foreground */
+  --auth-panel-accent: oklch(0.52 0.08 145);    /* Sage green */
+  --auth-form-bg: oklch(1 0 0);                 /* White */
+  --auth-orb-1: oklch(0.80 0.10 85 / 0.4);      /* Warm gold tint */
+  --auth-orb-2: oklch(0.75 0.08 90 / 0.3);
+  --auth-orb-3: oklch(0.80 0.10 85 / 0.25);
 }
 
 .dark {
@@ -175,6 +185,15 @@
                  0 4px 12px -2px oklch(0 0 0 / 0.25);
   --shadow-elevated: 0 4px 12px -2px oklch(0 0 0 / 0.35),
                      0 8px 24px -4px oklch(0 0 0 / 0.3);
+  /* Auth Page Colors - Dark */
+  --auth-panel: oklch(0.20 0.012 55);           /* Slightly lighter than bg */
+  --auth-panel-foreground: oklch(0.93 0.005 85);
+  --auth-panel-muted: oklch(0.65 0.01 60);
+  --auth-panel-accent: oklch(0.65 0.08 145);    /* Light sage */
+  --auth-form-bg: oklch(0.18 0.01 60);          /* Main dark bg */
+  --auth-orb-1: oklch(0.30 0.05 85 / 0.4);      /* Darker warm accents */
+  --auth-orb-2: oklch(0.25 0.04 90 / 0.3);
+  --auth-orb-3: oklch(0.30 0.05 85 / 0.25);
 }
 
 /* ============================================

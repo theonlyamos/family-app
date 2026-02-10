@@ -41,12 +41,16 @@ export default function Home() {
           <span className="font-display text-xl font-medium tracking-tight">Family Manager</span>
         </div>
         <div className="flex items-center gap-4">
-          <Button variant="ghost" className="rounded-xl">
-            Sign in
-          </Button>
-          <Button className="rounded-xl shadow-md hover:shadow-lg transition-shadow">
-            Get Started
-          </Button>
+          <Link href="/login">
+            <Button variant="ghost" className="rounded-xl">
+              Sign in
+            </Button>
+          </Link>
+          <Link href="/signup">
+            <Button className="rounded-xl shadow-md hover:shadow-lg transition-shadow">
+              Get Started
+            </Button>
+          </Link>
         </div>
       </nav>
 

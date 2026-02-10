@@ -10,18 +10,31 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Bell, Moon, Sun, Laptop } from "lucide-react"
+import { Bell, Moon, Sun, Laptop, LogOut, User } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { authClient } from "@/lib/auth-client"
 
 export function Header() {
     const { theme, setTheme, resolvedTheme } = useTheme()
     const [mounted, setMounted] = useState(false)
+    const router = useRouter()
+    const { data: session } = authClient.useSession()
 
     // Prevent hydration mismatch
     useEffect(() => {
         setMounted(true)
     }, [])
+
+    const handleLogout = async () => {
+        await authClient.signOut()
+        router.push("/login")
+        router.refresh()
+    }
+
+    const user = session?.user
+    const userInitials = user?.name ? user.name.split(" ").map(n => n[0]).join("").toUpperCase() : user?.email?.[0].toUpperCase() || "U"
 
     // Get current icon based on theme
     const getThemeIcon = () => {
@@ -121,29 +134,38 @@ export function Header() {
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="relative h-9 w-9 rounded-xl ring-offset-background transition-all duration-200 hover:bg-secondary/80">
                                 <Avatar className="h-9 w-9 ring-2 ring-primary/10 transition-all duration-200">
-                                    <AvatarImage src="/avatars/01.png" alt="@shadcn" />
-                                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">FM</AvatarFallback>
+                                    <AvatarImage src={user?.image || ""} alt={user?.name || user?.email || ""} />
+                                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                                        {userInitials}
+                                    </AvatarFallback>
                                 </Avatar>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-56 rounded-xl" align="end" forceMount>
                             <DropdownMenuLabel className="font-normal p-4">
                                 <div className="flex flex-col space-y-1.5">
-                                    <p className="text-sm font-semibold leading-none">Family Admin</p>
+                                    <p className="text-sm font-semibold leading-none">
+                                        {user?.name || "Family Member"}
+                                    </p>
                                     <p className="text-xs leading-none text-muted-foreground">
-                                        admin@example.com
+                                        {user?.email || "No email"}
                                     </p>
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="rounded-lg cursor-pointer transition-colors">
+                                <User className="mr-2 h-4 w-4" />
                                 Profile
                             </DropdownMenuItem>
                             <DropdownMenuItem className="rounded-lg cursor-pointer transition-colors">
                                 Settings
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="rounded-lg cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10 transition-colors">
+                            <DropdownMenuItem 
+                                className="rounded-lg cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10 transition-colors"
+                                onClick={handleLogout}
+                            >
+                                <LogOut className="mr-2 h-4 w-4" />
                                 Log out
                             </DropdownMenuItem>
                         </DropdownMenuContent>
