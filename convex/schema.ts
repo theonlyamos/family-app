@@ -80,7 +80,13 @@ export default defineSchema({
     // ──────────────────────────────────────────────
     investments: defineTable({
         name: v.string(),
-        type: v.string(),
+        type: v.union(
+            v.literal("stock"),
+            v.literal("crypto"),
+            v.literal("real_estate"),
+            v.literal("bond"),
+            v.literal("other")
+        ),
         amount: v.number(),
         date: v.string(),
         notes: v.optional(v.string()),

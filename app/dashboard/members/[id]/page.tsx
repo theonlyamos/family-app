@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback, useMemo, useEffect } from "react"
+import { useCallback, useMemo, useEffect } from "react"
 import {
     ReactFlow,
     MiniMap,
@@ -17,9 +17,11 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -29,11 +31,9 @@ import {
     MapPin,
     Calendar,
     Briefcase,
-    BookOpen,
     User,
     Users,
     Heart,
-    Shield,
     FileText,
     Clock,
     Edit,
@@ -42,141 +42,12 @@ import {
     Copy,
     Plus,
     Camera,
-    ArrowLeft,
     Activity,
     GraduationCap,
     Home,
 } from "lucide-react"
-// Member type definition
-interface Member {
-    id: string;
-    first_name: string;
-    middle_name?: string;
-    last_name: string;
-    aliases?: string[];
-    date_of_birth?: string;
-    place_of_birth?: string;
-    place_of_residence?: string;
-    phone_numbers?: string[];
-    email_addresses?: string[];
-    education?: string;
-    occupation?: string;
-    gender?: string;
-    bio?: string;
-    father?: string;
-    mother?: string;
-    spouse?: string;
-    children?: string[];
-    siblings?: string[];
-    role: "admin" | "member" | "viewer";
-    created_at: string;
-    avatar_url?: string;
-}
 
-// Mock data - in production this would come from an API
-const mockMembers: Member[] = [
-    {
-        id: "1",
-        first_name: "John",
-        last_name: "Miller",
-        aliases: ["Johnny", "J.R."],
-        date_of_birth: "1985-03-15",
-        place_of_birth: "Chicago, Illinois",
-        place_of_residence: "Seattle, Washington",
-        phone_numbers: ["+1 (555) 123-4567", "+1 (555) 987-6543"],
-        email_addresses: ["john@millerfamily.com", "john.work@email.com"],
-        education: "Bachelor's in Computer Science, University of Washington",
-        occupation: "Senior Software Engineer at Microsoft",
-        gender: "male",
-        bio: "John is the head of the family. He loves hiking, photography, and spending time with his kids.",
-        father: "",
-        mother: "",
-        spouse: "2",
-        children: ["3", "4"],
-        siblings: [],
-        role: "admin",
-        created_at: "2023-01-15T10:00:00Z",
-    },
-    {
-        id: "2",
-        first_name: "Jane",
-        last_name: "Miller",
-        aliases: ["Janie"],
-        date_of_birth: "1987-07-22",
-        place_of_birth: "Portland, Oregon",
-        place_of_residence: "Seattle, Washington",
-        phone_numbers: ["+1 (555) 123-4568"],
-        email_addresses: ["jane@millerfamily.com"],
-        education: "Master's in Education, Stanford University",
-        occupation: "Elementary School Teacher",
-        gender: "female",
-        bio: "Jane is a dedicated teacher and loving mother. She enjoys gardening and yoga.",
-        father: "",
-        mother: "",
-        spouse: "1",
-        children: ["3", "4"],
-        siblings: [],
-        role: "member",
-        created_at: "2023-01-15T10:00:00Z",
-    },
-    {
-        id: "3",
-        first_name: "Sam",
-        last_name: "Miller",
-        date_of_birth: "2010-11-08",
-        place_of_birth: "Seattle, Washington",
-        place_of_residence: "Seattle, Washington",
-        phone_numbers: [],
-        email_addresses: ["sam@millerfamily.com"],
-        education: "8th Grade",
-        occupation: "Student",
-        gender: "male",
-        bio: "Sam loves soccer and video games. He's on the school soccer team.",
-        father: "1",
-        mother: "2",
-        spouse: "",
-        children: [],
-        siblings: ["4"],
-        role: "member",
-        created_at: "2023-01-15T10:00:00Z",
-    },
-    {
-        id: "4",
-        first_name: "Emily",
-        last_name: "Miller",
-        aliases: ["Emmy"],
-        date_of_birth: "2013-04-12",
-        place_of_birth: "Seattle, Washington",
-        place_of_residence: "Seattle, Washington",
-        phone_numbers: [],
-        email_addresses: ["emily@millerfamily.com"],
-        education: "5th Grade",
-        occupation: "Student",
-        gender: "female",
-        bio: "Emily loves art, dancing, and playing with her friends.",
-        father: "1",
-        mother: "2",
-        spouse: "",
-        children: [],
-        siblings: ["3"],
-        role: "member",
-        created_at: "2023-01-15T10:00:00Z",
-    },
-]
-
-// Mock documents data
-const mockDocuments = [
-    { id: "1", name: "Birth Certificate", type: "PDF", date: "2024-01-15", category: "Personal" },
-    { id: "2", name: "Medical Records", type: "PDF", date: "2024-02-20", category: "Medical" },
-    { id: "3", name: "School Transcript", type: "DOCX", date: "2024-03-10", category: "Personal" },
-]
-
-// Mock activities
-const mockActivities = [
-    { id: "1", action: "Updated profile information", date: "2024-03-15T10:30:00Z", type: "update" },
-    { id: "2", action: "Uploaded new document: Birth Certificate", date: "2024-03-10T14:20:00Z", type: "upload" },
-    { id: "3", action: "Attended Family Dinner event", date: "2024-03-01T18:00:00Z", type: "event" },
-]
+type MemberDoc = Doc<"members">
 
 // Copy to clipboard function
 function copyToClipboard(text: string) {
@@ -184,34 +55,31 @@ function copyToClipboard(text: string) {
 }
 
 // Mini Family Tree Component using React Flow
-function MiniFamilyTree({ 
+function MiniFamilyTree({
     member,
     father,
     mother,
     spouse,
     children,
     siblings,
-    allMembers
 }: {
-    member: Member
-    father: Member | undefined
-    mother: Member | undefined
-    spouse: Member | undefined
-    children: Member[]
-    siblings: Member[]
-    allMembers: Member[]
+    member: MemberDoc
+    father: MemberDoc | undefined
+    mother: MemberDoc | undefined
+    spouse: MemberDoc | undefined
+    children: MemberDoc[]
+    siblings: MemberDoc[]
 }) {
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([] as Node[])
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([] as Edge[])
 
-    // Generate nodes and edges based on family relationships
     useEffect(() => {
         const newNodes: Node[] = []
         const newEdges: Edge[] = []
         let yPos = 0
-        
+
         // Parents at top
-        const parents: Member[] = []
+        const parents: MemberDoc[] = []
         if (father) parents.push(father)
         if (mother) parents.push(mother)
 
@@ -220,12 +88,10 @@ function MiniFamilyTree({
                 const xOffset = parents.length === 1 ? 0 : (index === 0 ? -100 : 100)
                 const parentLabel = parent.gender === 'male' ? 'Father' : 'Mother'
                 newNodes.push({
-                    id: `parent-${parent.id}`,
+                    id: `parent-${parent._id}`,
                     position: { x: 250 + xOffset, y: yPos },
                     data: {
-                        label: `${parentLabel}: ${parent.first_name}`,
-                        member: parent,
-                        type: 'parent'
+                        label: `${parentLabel}: ${parent.firstName}`,
                     },
                     style: {
                         background: 'oklch(0.70 0.10 85)',
@@ -245,17 +111,15 @@ function MiniFamilyTree({
         const siblingNodes: Node[] = []
         const allSiblings = [...siblings]
         const memberIndex = Math.floor(allSiblings.length / 2)
-        
+
         // Add siblings before current member
         allSiblings.slice(0, memberIndex).forEach((sibling, idx) => {
             const siblingLabel = sibling.gender === 'male' ? 'Brother' : sibling.gender === 'female' ? 'Sister' : 'Sibling'
             siblingNodes.push({
-                id: `sibling-${sibling.id}`,
+                id: `sibling-${sibling._id}`,
                 position: { x: 50 + (idx * 160), y: yPos },
-                data: { 
-                    label: `${siblingLabel}: ${sibling.first_name}`,
-                    member: sibling,
-                    type: 'sibling'
+                data: {
+                    label: `${siblingLabel}: ${sibling.firstName}`,
                 },
                 style: {
                     background: 'oklch(0.60 0.08 30)',
@@ -271,12 +135,10 @@ function MiniFamilyTree({
 
         // Current member (center)
         newNodes.push({
-            id: `member-${member.id}`,
+            id: `member-${member._id}`,
             position: { x: 250, y: yPos },
-            data: { 
-                label: `You: ${member.first_name}`,
-                member: member,
-                type: 'self'
+            data: {
+                label: `You: ${member.firstName}`,
             },
             style: {
                 background: 'oklch(0.52 0.08 145)',
@@ -294,12 +156,10 @@ function MiniFamilyTree({
         allSiblings.slice(memberIndex).forEach((sibling, idx) => {
             const siblingLabel = sibling.gender === 'male' ? 'Brother' : sibling.gender === 'female' ? 'Sister' : 'Sibling'
             siblingNodes.push({
-                id: `sibling-${sibling.id}`,
+                id: `sibling-${sibling._id}`,
                 position: { x: 420 + (idx * 160), y: yPos },
-                data: { 
-                    label: `${siblingLabel}: ${sibling.first_name}`,
-                    member: sibling,
-                    type: 'sibling'
+                data: {
+                    label: `${siblingLabel}: ${sibling.firstName}`,
                 },
                 style: {
                     background: 'oklch(0.60 0.08 30)',
@@ -320,12 +180,10 @@ function MiniFamilyTree({
         if (spouse) {
             const spouseLabel = spouse.gender === 'male' ? 'Husband' : spouse.gender === 'female' ? 'Wife' : 'Spouse'
             newNodes.push({
-                id: `spouse-${spouse.id}`,
+                id: `spouse-${spouse._id}`,
                 position: { x: 420, y: yPos - 120 },
-                data: { 
-                    label: `${spouseLabel}: ${spouse.first_name}`,
-                    member: spouse,
-                    type: 'spouse'
+                data: {
+                    label: `${spouseLabel}: ${spouse.firstName}`,
                 },
                 style: {
                     background: 'oklch(0.65 0.12 45)',
@@ -337,11 +195,10 @@ function MiniFamilyTree({
                     fontWeight: 500,
                 }
             })
-            // Marriage connection
             newEdges.push({
                 id: `e-spouse`,
-                source: `member-${member.id}`,
-                target: `spouse-${spouse.id}`,
+                source: `member-${member._id}`,
+                target: `spouse-${spouse._id}`,
                 animated: true,
                 style: { stroke: 'oklch(0.65 0.12 45)', strokeWidth: 2 },
             })
@@ -354,12 +211,10 @@ function MiniFamilyTree({
                 const xOffset = children.length === 1 ? 0 : ((index - (children.length - 1) / 2) * 160)
                 const childLabel = child.gender === 'male' ? 'Son' : child.gender === 'female' ? 'Daughter' : 'Child'
                 newNodes.push({
-                    id: `child-${child.id}`,
+                    id: `child-${child._id}`,
                     position: { x: 250 + xOffset, y: yPos },
-                    data: { 
-                        label: `${childLabel}: ${child.first_name}`,
-                        member: child,
-                        type: 'child'
+                    data: {
+                        label: `${childLabel}: ${child.firstName}`,
                     },
                     style: {
                         background: 'oklch(0.45 0.06 180)',
@@ -372,11 +227,10 @@ function MiniFamilyTree({
                         color: 'white',
                     }
                 })
-                // Connection from member to child
                 newEdges.push({
-                    id: `e-child-${child.id}`,
-                    source: `member-${member.id}`,
-                    target: `child-${child.id}`,
+                    id: `e-child-${child._id}`,
+                    source: `member-${member._id}`,
+                    target: `child-${child._id}`,
                     style: { stroke: 'oklch(0.45 0.06 180)', strokeWidth: 2 },
                 })
             })
@@ -385,9 +239,9 @@ function MiniFamilyTree({
         // Connect parents to member
         parents.forEach((parent) => {
             newEdges.push({
-                id: `e-parent-${parent.id}`,
-                source: `parent-${parent.id}`,
-                target: `member-${member.id}`,
+                id: `e-parent-${parent._id}`,
+                source: `parent-${parent._id}`,
+                target: `member-${member._id}`,
                 style: { stroke: 'oklch(0.70 0.10 85)', strokeWidth: 2 },
             })
         })
@@ -395,16 +249,16 @@ function MiniFamilyTree({
         // Connect siblings to member
         siblings.forEach((sibling) => {
             newEdges.push({
-                id: `e-sibling-${sibling.id}`,
-                source: `member-${member.id}`,
-                target: `sibling-${sibling.id}`,
+                id: `e-sibling-${sibling._id}`,
+                source: `member-${member._id}`,
+                target: `sibling-${sibling._id}`,
                 style: { stroke: 'oklch(0.60 0.08 30)', strokeWidth: 1, strokeDasharray: '5,5' },
             })
         })
 
         setNodes(newNodes)
         setEdges(newEdges)
-    }, [member, father, mother, spouse, children, siblings])
+    }, [member, father, mother, spouse, children, siblings, setNodes, setEdges])
 
     const onConnect = useCallback(
         (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -412,9 +266,11 @@ function MiniFamilyTree({
     )
 
     const onNodeClick = (_: any, node: Node) => {
-        const memberData = node.data.member as Member
-        if (memberData.id !== member.id) {
-            window.location.href = `/dashboard/members/${memberData.id}`
+        // Navigate to the member page if it's not the current member
+        const nodeId = node.id
+        const memberId = nodeId.split('-').slice(1).join('-')
+        if (memberId !== member._id) {
+            window.location.href = `/dashboard/members/${memberId}`
         }
     }
 
@@ -430,14 +286,14 @@ function MiniFamilyTree({
             attributionPosition="bottom-left"
         >
             <Controls className="!bg-card !border-border !shadow-md !rounded-xl" />
-            <MiniMap 
+            <MiniMap
                 className="!bg-card !border-border !shadow-md !rounded-xl"
                 maskColor="oklch(0 0 0 / 0.1)"
             />
-            <Background 
+            <Background
                 variant={BackgroundVariant.Dots}
-                gap={20} 
-                size={1} 
+                gap={20}
+                size={1}
                 color="oklch(0.8 0.01 75)"
             />
         </ReactFlow>
@@ -446,17 +302,59 @@ function MiniFamilyTree({
 
 export default function MemberDetailsPage() {
     const params = useParams()
-    const memberId = params.id as string
-    
-    // Get member from mock data
-    const member = mockMembers.find(m => m.id === memberId) || mockMembers[0]
-    
+    const memberId = params.id as Id<"members">
+
+    const member = useQuery(api.members.getById, { id: memberId })
+    const allMembers = useQuery(api.members.list)
+    const memberDocuments = useQuery(api.documents.listByMemberId, { memberId })
+    const memberActivities = useQuery(api.activities.listByMemberId, { memberId })
+
+    if (member === undefined || allMembers === undefined) {
+        return (
+            <div className="space-y-6 animate-fade-in-up">
+                <div className="space-y-1">
+                    <h1 className="text-4xl font-display font-medium tracking-tight">Loading...</h1>
+                    <p className="text-muted-foreground">Fetching member details...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (member === null) {
+        return (
+            <div className="space-y-6 animate-fade-in-up">
+                <div className="text-center py-16">
+                    <h1 className="text-2xl font-display font-medium">Member not found</h1>
+                    <p className="text-muted-foreground mt-2">The member you're looking for doesn't exist.</p>
+                    <Button asChild className="mt-4"><Link href="/dashboard/members">Back to Members</Link></Button>
+                </div>
+            </div>
+        )
+    }
+
     // Get related members
-    const father = mockMembers.find(m => m.id === member.father)
-    const mother = mockMembers.find(m => m.id === member.mother)
-    const spouse = mockMembers.find(m => m.id === member.spouse)
-    const children = mockMembers.filter(m => member.children?.includes(m.id))
-    const siblings = mockMembers.filter(m => member.siblings?.includes(m.id))
+    const father = member.fatherId ? allMembers.find(m => m._id === member.fatherId) : undefined
+    const mother = member.motherId ? allMembers.find(m => m._id === member.motherId) : undefined
+    const spouse = member.spouseId ? allMembers.find(m => m._id === member.spouseId) : undefined
+    const children = allMembers.filter(m => m.fatherId === member._id || m.motherId === member._id)
+    const siblings = allMembers.filter(m =>
+        m._id !== member._id &&
+        ((member.fatherId && m.fatherId === member.fatherId) || (member.motherId && m.motherId === member.motherId))
+    )
+
+    // Associated documents (those mentioning this member)
+    // Associated documents logic moved to useQuery above
+
+    // Format relative time
+    const formatRelativeTime = (creationTime: number): string => {
+        const diff = Date.now() - creationTime
+        const minutes = Math.floor(diff / 60000)
+        if (minutes < 60) return `${minutes}m ago`
+        const hours = Math.floor(minutes / 60)
+        if (hours < 24) return `${hours}h ago`
+        const days = Math.floor(hours / 24)
+        return `${days}d ago`
+    }
 
     return (
         <div className="space-y-6">
@@ -464,7 +362,7 @@ export default function MemberDetailsPage() {
             <nav className="flex items-center text-sm text-muted-foreground">
                 <Link href="/dashboard/members" className="hover:text-primary transition-colors cursor-pointer">Members</Link>
                 <ChevronRight className="h-4 w-4 mx-2" />
-                <span className="text-foreground font-medium">{member.first_name} {member.last_name}</span>
+                <span className="text-foreground font-medium">{member.firstName} {member.lastName}</span>
             </nav>
 
             {/* Header Card */}
@@ -474,9 +372,9 @@ export default function MemberDetailsPage() {
                         {/* Avatar */}
                         <div className="relative mx-auto md:mx-0">
                             <Avatar className="h-32 w-32 ring-4 ring-primary/20">
-                                <AvatarImage src={member.avatar_url} />
+                                <AvatarImage src={member.avatarUrl} />
                                 <AvatarFallback className="bg-primary/10 text-primary text-4xl font-medium">
-                                    {member.first_name[0]}{member.last_name[0]}
+                                    {member.firstName[0]}{member.lastName[0]}
                                 </AvatarFallback>
                             </Avatar>
                             <button className="absolute -bottom-2 -right-2 w-10 h-10 bg-primary rounded-full flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors cursor-pointer">
@@ -489,11 +387,8 @@ export default function MemberDetailsPage() {
                             <div className="space-y-2">
                                 <div className="flex flex-col md:flex-row md:items-center gap-3 justify-center md:justify-start">
                                     <h1 className="text-3xl md:text-4xl font-display font-medium tracking-tight">
-                                        {[member.first_name, member.middle_name, member.last_name].filter(Boolean).join(' ')}
+                                        {[member.firstName, member.middleName, member.lastName].filter(Boolean).join(' ')}
                                     </h1>
-                                    <Badge variant={member.role === "admin" ? "sage" : member.role === "viewer" ? "secondary" : "default"} className="capitalize w-fit mx-auto md:mx-0">
-                                        {member.role}
-                                    </Badge>
                                 </div>
                                 {member.aliases && member.aliases.length > 0 && (
                                     <p className="text-muted-foreground">Also known as: {member.aliases.join(", ")}</p>
@@ -508,7 +403,7 @@ export default function MemberDetailsPage() {
 
                             {/* Action Buttons */}
                             <div className="flex gap-2 mt-4 justify-center md:justify-start">
-                                <Link href={`/dashboard/members?edit=${member.id}`}>
+                                <Link href={`/dashboard/members?edit=${member._id}`}>
                                     <Button variant="outline" className="rounded-xl">
                                         <Edit className="mr-2 h-4 w-4" /> Edit Profile
                                     </Button>
@@ -547,30 +442,30 @@ export default function MemberDetailsPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {member.date_of_birth && (
+                                {member.dateOfBirth && (
                                     <div className="flex items-start gap-3">
                                         <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                                         <div>
                                             <p className="text-sm text-muted-foreground">Date of Birth</p>
-                                            <p className="font-medium">{new Date(member.date_of_birth).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                                            <p className="font-medium">{new Date(member.dateOfBirth).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                                         </div>
                                     </div>
                                 )}
-                                {member.place_of_birth && (
+                                {member.placeOfBirth && (
                                     <div className="flex items-start gap-3">
                                         <Home className="h-5 w-5 text-muted-foreground mt-0.5" />
                                         <div>
                                             <p className="text-sm text-muted-foreground">Place of Birth</p>
-                                            <p className="font-medium">{member.place_of_birth}</p>
+                                            <p className="font-medium">{member.placeOfBirth}</p>
                                         </div>
                                     </div>
                                 )}
-                                {member.place_of_residence && (
+                                {member.placeOfResidence && (
                                     <div className="flex items-start gap-3">
                                         <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
                                         <div>
                                             <p className="text-sm text-muted-foreground">Current Residence</p>
-                                            <p className="font-medium">{member.place_of_residence}</p>
+                                            <p className="font-medium">{member.placeOfResidence}</p>
                                         </div>
                                     </div>
                                 )}
@@ -595,10 +490,10 @@ export default function MemberDetailsPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {member.email_addresses && member.email_addresses.length > 0 && (
+                                {member.emailAddresses && member.emailAddresses.length > 0 && (
                                     <div className="space-y-2">
                                         <p className="text-sm text-muted-foreground">Email Addresses</p>
-                                        {member.email_addresses.map((email, idx) => (
+                                        {member.emailAddresses.map((email, idx) => (
                                             <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded-lg">
                                                 <div className="flex items-center gap-2">
                                                     <Mail className="h-4 w-4 text-muted-foreground" />
@@ -611,10 +506,10 @@ export default function MemberDetailsPage() {
                                         ))}
                                     </div>
                                 )}
-                                {member.phone_numbers && member.phone_numbers.length > 0 && (
+                                {member.phoneNumbers && member.phoneNumbers.length > 0 && (
                                     <div className="space-y-2">
                                         <p className="text-sm text-muted-foreground">Phone Numbers</p>
-                                        {member.phone_numbers.map((phone, idx) => (
+                                        {member.phoneNumbers.map((phone, idx) => (
                                             <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded-lg">
                                                 <div className="flex items-center gap-2">
                                                     <Phone className="h-4 w-4 text-muted-foreground" />
@@ -663,7 +558,6 @@ export default function MemberDetailsPage() {
                                     spouse={spouse}
                                     children={children}
                                     siblings={siblings}
-                                    allMembers={mockMembers}
                                 />
                             </div>
                             <div className="flex justify-center gap-6 mt-4 text-xs text-muted-foreground">
@@ -703,13 +597,13 @@ export default function MemberDetailsPage() {
                             <CardContent>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {[father, mother].filter(Boolean).map((parent) => (
-                                        parent && <Link key={parent.id} href={`/dashboard/members/${parent.id}`}>
+                                        parent && <Link key={parent._id} href={`/dashboard/members/${parent._id}`}>
                                             <div className="flex items-center gap-3 p-4 bg-muted rounded-xl hover:bg-muted/80 transition-colors cursor-pointer">
                                                 <Avatar className="h-12 w-12">
-                                                    <AvatarFallback className="bg-primary/10 text-primary">{parent.first_name[0]}{parent.last_name[0]}</AvatarFallback>
+                                                    <AvatarFallback className="bg-primary/10 text-primary">{parent.firstName[0]}{parent.lastName[0]}</AvatarFallback>
                                                 </Avatar>
                                                 <div>
-                                                    <p className="font-medium">{parent.first_name} {parent.last_name}</p>
+                                                    <p className="font-medium">{parent.firstName} {parent.lastName}</p>
                                                     <p className="text-sm text-muted-foreground">{parent.occupation || "Family Member"}</p>
                                                 </div>
                                             </div>
@@ -730,13 +624,13 @@ export default function MemberDetailsPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <Link href={`/dashboard/members/${spouse.id}`}>
+                                <Link href={`/dashboard/members/${spouse._id}`}>
                                     <div className="flex items-center gap-3 p-4 bg-muted rounded-xl hover:bg-muted/80 transition-colors cursor-pointer max-w-md">
                                         <Avatar className="h-12 w-12">
-                                            <AvatarFallback className="bg-primary/10 text-primary">{spouse.first_name[0]}{spouse.last_name[0]}</AvatarFallback>
+                                            <AvatarFallback className="bg-primary/10 text-primary">{spouse.firstName[0]}{spouse.lastName[0]}</AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <p className="font-medium">{spouse.first_name} {spouse.last_name}</p>
+                                            <p className="font-medium">{spouse.firstName} {spouse.lastName}</p>
                                             <p className="text-sm text-muted-foreground">{spouse.occupation || "Family Member"}</p>
                                         </div>
                                     </div>
@@ -757,16 +651,16 @@ export default function MemberDetailsPage() {
                             <CardContent>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {children.map((child) => (
-                                        <Link key={child.id} href={`/dashboard/members/${child.id}`}>
+                                        <Link key={child._id} href={`/dashboard/members/${child._id}`}>
                                             <div className="flex items-center gap-3 p-4 bg-muted rounded-xl hover:bg-muted/80 transition-colors cursor-pointer">
                                                 <Avatar className="h-12 w-12">
-                                                    <AvatarFallback className="bg-primary/10 text-primary">{child.first_name[0]}{child.last_name[0]}</AvatarFallback>
+                                                    <AvatarFallback className="bg-primary/10 text-primary">{child.firstName[0]}{child.lastName[0]}</AvatarFallback>
                                                 </Avatar>
                                                 <div>
-                                                    <p className="font-medium">{child.first_name} {child.last_name}</p>
-                                                    {child.date_of_birth && (
+                                                    <p className="font-medium">{child.firstName} {child.lastName}</p>
+                                                    {child.dateOfBirth && (
                                                         <p className="text-sm text-muted-foreground">
-                                                            {new Date().getFullYear() - new Date(child.date_of_birth).getFullYear()} years old
+                                                            {new Date().getFullYear() - new Date(child.dateOfBirth).getFullYear()} years old
                                                         </p>
                                                     )}
                                                 </div>
@@ -790,13 +684,13 @@ export default function MemberDetailsPage() {
                             <CardContent>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {siblings.map((sibling) => (
-                                        <Link key={sibling.id} href={`/dashboard/members/${sibling.id}`}>
+                                        <Link key={sibling._id} href={`/dashboard/members/${sibling._id}`}>
                                             <div className="flex items-center gap-3 p-4 bg-muted rounded-xl hover:bg-muted/80 transition-colors cursor-pointer">
                                                 <Avatar className="h-12 w-12">
-                                                    <AvatarFallback className="bg-primary/10 text-primary">{sibling.first_name[0]}{sibling.last_name[0]}</AvatarFallback>
+                                                    <AvatarFallback className="bg-primary/10 text-primary">{sibling.firstName[0]}{sibling.lastName[0]}</AvatarFallback>
                                                 </Avatar>
                                                 <div>
-                                                    <p className="font-medium">{sibling.first_name} {sibling.last_name}</p>
+                                                    <p className="font-medium">{sibling.firstName} {sibling.lastName}</p>
                                                     <p className="text-sm text-muted-foreground">{sibling.occupation || "Family Member"}</p>
                                                 </div>
                                             </div>
@@ -851,32 +745,40 @@ export default function MemberDetailsPage() {
                         <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle className="font-display text-lg flex items-center gap-2">
                                 <FileText className="h-5 w-5 text-primary" />
-                                Associated Documents ({mockDocuments.length})
+                                Associated Documents ({(memberDocuments ?? []).length})
                             </CardTitle>
                             <Button variant="outline" size="sm" className="rounded-xl">
                                 <Plus className="mr-2 h-4 w-4" /> Add Document
                             </Button>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid gap-4">
-                                {mockDocuments.map((doc) => (
-                                    <div key={doc.id} className="flex items-center justify-between p-4 bg-muted rounded-xl">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                                <FileText className="h-5 w-5 text-primary" />
+                            {(memberDocuments ?? []).length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center py-8">No documents associated with this member.</p>
+                            ) : (
+                                <div className="grid gap-4">
+                                    {(memberDocuments ?? []).map((doc) => (
+                                        <Link key={doc._id} href={`/dashboard/vault/${doc._id}`}>
+                                            <div className="flex items-center justify-between p-4 bg-muted rounded-xl hover:bg-muted/80 transition-colors cursor-pointer">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                        <FileText className="h-5 w-5 text-primary" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium">{doc.name}</p>
+                                                        <p className="text-sm text-muted-foreground">{doc.category} • {doc.type}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {new Date(doc._creationTime).toLocaleDateString()}
+                                                    </span>
+                                                    <Button variant="ghost" size="sm" className="rounded-lg">View</Button>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-medium">{doc.name}</p>
-                                                <p className="text-sm text-muted-foreground">{doc.category} • {doc.type}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-muted-foreground">{doc.date}</span>
-                                            <Button variant="ghost" size="sm" className="rounded-lg">View</Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -891,23 +793,25 @@ export default function MemberDetailsPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                {mockActivities.map((activity) => (
-                                    <div key={activity.id} className="flex items-start gap-4 pb-4 border-b last:border-0 last:pb-0">
-                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                            <Clock className="h-5 w-5 text-primary" />
+                            {(memberActivities ?? []).length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center py-8">No recent activity.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {(memberActivities ?? []).map((activity) => (
+                                        <div key={activity._id} className="flex items-start gap-4 pb-4 border-b last:border-0 last:pb-0">
+                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                                <Clock className="h-5 w-5 text-primary" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="font-medium">{activity.action}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {formatRelativeTime(activity._creationTime)}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="font-medium">{activity.action}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {new Date(activity.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                {' • '}
-                                                {new Date(activity.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>

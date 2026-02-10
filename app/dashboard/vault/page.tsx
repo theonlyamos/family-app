@@ -2,6 +2,9 @@
 
 import { useState, useRef } from "react"
 import Link from "next/link"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,100 +28,46 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { FileText, Lock, Upload, ShieldCheck, Search, File, CloudUpload, Plus, X, User } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { FileText, Lock, Upload, ShieldCheck, Search, CloudUpload, Plus, X, User } from "lucide-react"
 
-// Mock family members data
-const mockFamilyMembers = [
-    { id: "1", first_name: "John", last_name: "Miller", email: "john@millerfamily.com" },
-    { id: "2", first_name: "Jane", last_name: "Miller", email: "jane@millerfamily.com" },
-    { id: "3", first_name: "Sam", last_name: "Miller", email: "sam@millerfamily.com" },
-    { id: "4", first_name: "Emily", last_name: "Miller", email: "emily@millerfamily.com" },
-    { id: "5", first_name: "Robert", last_name: "Miller", email: "robert@millerfamily.com" },
-    { id: "6", first_name: "Sarah", last_name: "Miller", email: "sarah@millerfamily.com" },
-]
+// Define valid variants for Badge component
+type ValidBadgeVariant = "default" | "secondary" | "destructive" | "outline" | "ghost" | "link" | "sage" | "terracotta" | "gold" | "blue" | "rose" | null | undefined
 
-const mockDocuments = [
-    {
-        id: "1",
-        name: "Mortgage Agreement",
-        type: "PDF",
-        size: "2.1 MB",
-        date: "May 20, 2024",
-        category: "Property",
-        variant: "rose" as const,
-    },
-    {
-        id: "2",
-        name: "Birth Certificate - John",
-        type: "Passport",
-        size: "1.5 MB",
-        date: "Apr 15, 2024",
-        category: "Personal",
-        variant: "gold" as const,
-    },
-    {
-        id: "3",
-        name: "Last Will & Testament",
-        type: "DOCX",
-        size: "800 KB",
-        date: "Mar 02, 2024",
-        category: "Legal",
-        variant: "blue" as const,
-    },
-    {
-        id: "4",
-        name: "Car Title - Honda Civic",
-        type: "Deed",
-        size: "1.2 MB",
-        date: "Feb 28, 2024",
-        category: "Property",
-        variant: "sage" as const,
-    },
-    {
-        id: "5",
-        name: "Passport - Jane Doe",
-        type: "Passport",
-        size: "4.5 MB",
-        date: "Jan 10, 2024",
-        category: "Personal",
-        variant: "gold" as const,
-    },
-    {
-        id: "6",
-        name: "Home Insurance Policy",
-        type: "PDF",
-        size: "3.0 MB",
-        date: "Dec 05, 2023",
-        category: "Insurance",
-        variant: "terracotta" as const,
-    },
-]
+const getCategoryVariant = (category: string): ValidBadgeVariant => {
+    switch (category) {
+        case "Finance": return "gold"
+        case "Health": return "rose"
+        case "Legal": return "blue"
+        case "Personal": return "sage"
+        default: return "secondary"
+    }
+}
 
 // Searchable Member Selector Component
 function SearchableMemberSelector({
     selectedMembers,
     onChange,
     label,
-    placeholder = "Search for family members..."
+    placeholder = "Search for family members...",
+    members,
 }: {
     selectedMembers: string[]
     onChange: (memberIds: string[]) => void
     label: string
     placeholder?: string
+    members: Doc<"members">[]
 }) {
     const [searchQuery, setSearchQuery] = useState("")
     const [isOpen, setIsOpen] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
 
-    const selectedMemberObjects = mockFamilyMembers.filter(m => selectedMembers.includes(m.id))
+    const selectedMemberObjects = members.filter(m => selectedMembers.includes(m._id))
 
-    const filteredMembers = mockFamilyMembers.filter(member =>
-        !selectedMembers.includes(member.id) &&
-        (member.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         member.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         `${member.first_name} ${member.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         member.email.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredMembers = members.filter(member =>
+        !selectedMembers.includes(member._id) &&
+        (member.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            member.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            `${member.firstName} ${member.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()))
     )
 
     const addMember = (memberId: string) => {
@@ -140,18 +89,18 @@ function SearchableMemberSelector({
                 <div className="flex flex-wrap gap-2 mb-2">
                     {selectedMemberObjects.map((member) => (
                         <div
-                            key={member.id}
+                            key={member._id}
                             className="flex items-center gap-2 px-3 py-1.5 bg-[oklch(0.94_0.02_145)] rounded-full text-sm"
                         >
                             <Avatar className="h-5 w-5">
                                 <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
-                                    {member.first_name[0]}{member.last_name[0]}
+                                    {member.firstName[0]}{member.lastName[0]}
                                 </AvatarFallback>
                             </Avatar>
-                            <span>{member.first_name} {member.last_name}</span>
+                            <span>{member.firstName} {member.lastName}</span>
                             <button
                                 type="button"
-                                onClick={() => removeMember(member.id)}
+                                onClick={() => removeMember(member._id)}
                                 className="hover:bg-primary/20 rounded-full p-0.5 transition-colors cursor-pointer"
                             >
                                 <X className="h-3 w-3" />
@@ -191,18 +140,18 @@ function SearchableMemberSelector({
                             ) : (
                                 filteredMembers.map((member) => (
                                     <div
-                                        key={member.id}
-                                        onClick={() => addMember(member.id)}
+                                        key={member._id}
+                                        onClick={() => addMember(member._id)}
                                         className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer transition-colors"
                                     >
                                         <Avatar className="h-8 w-8">
                                             <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                                                {member.first_name[0]}{member.last_name[0]}
+                                                {member.firstName[0]}{member.lastName[0]}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div className="flex-1 min-w-0">
-                                            <span className="text-sm font-medium block">{member.first_name} {member.last_name}</span>
-                                            <span className="text-xs text-muted-foreground truncate block">{member.email}</span>
+                                            <span className="text-sm font-medium block">{member.firstName} {member.lastName}</span>
+                                            <span className="text-xs text-muted-foreground truncate block">{member.emailAddresses?.[0] || ""}</span>
                                         </div>
                                         <Plus className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                     </div>
@@ -221,6 +170,9 @@ export default function VaultPage() {
     const [filterType, setFilterType] = useState("All Document Types")
     const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
 
+    const documents = useQuery(api.documents.list)
+    const members = useQuery(api.members.list)
+
     // Upload form state
     const [uploadForm, setUploadForm] = useState({
         title: "",
@@ -230,7 +182,7 @@ export default function VaultPage() {
         associatedMembers: [] as string[]
     })
 
-    const filteredDocuments = mockDocuments.filter((doc) => {
+    const filteredDocuments = (documents ?? []).filter((doc) => {
         const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase())
         const matchesFilter =
             filterType === "All Document Types" || doc.category === filterType || doc.type === filterType
@@ -238,10 +190,9 @@ export default function VaultPage() {
     })
 
     const handleUpload = () => {
-        // Handle upload logic here
+        // Handle upload logic here — file storage integration pending
         console.log("Uploading document:", uploadForm)
         setIsUploadDialogOpen(false)
-        // Reset form
         setUploadForm({
             title: "",
             type: "",
@@ -249,6 +200,17 @@ export default function VaultPage() {
             description: "",
             associatedMembers: []
         })
+    }
+
+    if (documents === undefined) {
+        return (
+            <div className="space-y-8">
+                <div className="space-y-1">
+                    <h1 className="text-4xl font-display font-medium tracking-tight">Documents</h1>
+                    <p className="text-muted-foreground">Loading documents...</p>
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -305,7 +267,7 @@ export default function VaultPage() {
                                             id="title"
                                             placeholder="e.g., Mortgage Agreement"
                                             value={uploadForm.title}
-                                            onChange={(e) => setUploadForm({...uploadForm, title: e.target.value})}
+                                            onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
                                             className="rounded-xl"
                                         />
                                     </div>
@@ -313,7 +275,7 @@ export default function VaultPage() {
                                         <Label htmlFor="category">Category</Label>
                                         <Select
                                             value={uploadForm.category}
-                                            onValueChange={(value) => setUploadForm({...uploadForm, category: value})}
+                                            onValueChange={(value) => setUploadForm({ ...uploadForm, category: value })}
                                         >
                                             <SelectTrigger className="rounded-xl">
                                                 <SelectValue placeholder="Select category" />
@@ -335,7 +297,7 @@ export default function VaultPage() {
                                     <Label htmlFor="type">Document Type</Label>
                                     <Select
                                         value={uploadForm.type}
-                                        onValueChange={(value) => setUploadForm({...uploadForm, type: value})}
+                                        onValueChange={(value) => setUploadForm({ ...uploadForm, type: value })}
                                     >
                                         <SelectTrigger className="rounded-xl">
                                             <SelectValue placeholder="Select document type" />
@@ -358,7 +320,7 @@ export default function VaultPage() {
                                         id="description"
                                         placeholder="Add a short description... (optional)"
                                         value={uploadForm.description}
-                                        onChange={(e) => setUploadForm({...uploadForm, description: e.target.value})}
+                                        onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
                                         className="h-24 rounded-xl"
                                     />
                                 </div>
@@ -377,8 +339,9 @@ export default function VaultPage() {
                                         <SearchableMemberSelector
                                             label="Associated Family Members"
                                             selectedMembers={uploadForm.associatedMembers}
-                                            onChange={(memberIds) => setUploadForm({...uploadForm, associatedMembers: memberIds})}
+                                            onChange={(memberIds) => setUploadForm({ ...uploadForm, associatedMembers: memberIds })}
                                             placeholder="Search and add members..."
+                                            members={members ?? []}
                                         />
                                     </div>
                                 </div>
@@ -432,7 +395,7 @@ export default function VaultPage() {
             {/* Documents Grid */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {filteredDocuments.map((doc, index) => (
-                    <Link href={`/dashboard/vault/${doc.id}`} key={doc.id}>
+                    <Link href={`/dashboard/vault/${doc._id}`} key={doc._id}>
                         <Card
                             className="cursor-pointer h-full group animate-fade-in-up"
                             style={{ animationDelay: `${index * 50}ms` }}
@@ -445,11 +408,11 @@ export default function VaultPage() {
                             </CardHeader>
                             <CardContent className="pt-4">
                                 <h3 className="font-medium text-base mb-3 truncate">{doc.name}</h3>
-                                <Badge variant={doc.variant} className="mb-4 font-normal">
-                                    {doc.type}
+                                <Badge variant={getCategoryVariant(doc.category)} className="font-normal w-fit">
+                                    {doc.category}
                                 </Badge>
                                 <div className="text-xs text-muted-foreground flex items-center gap-2">
-                                    <span>{doc.date}</span>
+                                    <span>{doc.category}</span>
                                     <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                                     <span>{doc.size}</span>
                                 </div>
@@ -459,7 +422,7 @@ export default function VaultPage() {
                 ))}
             </div>
 
-            {/* Empty State (when no documents match) */}
+            {/* Empty State */}
             {filteredDocuments.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                     <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">

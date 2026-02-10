@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -13,19 +15,16 @@ import {
 } from "@/components/ui/select"
 import { CalendarDays, Clock } from "lucide-react"
 
-const events = [
-    { date: new Date(2024, 11, 15), title: "Soccer Practice", type: "kids", time: "4:00 PM" },
-    { date: new Date(2024, 11, 20), title: "Family Dinner", type: "family", time: "6:00 PM" },
-    { date: new Date(2024, 11, 25), title: "Dentist Appt", type: "health", time: "2:00 PM" },
-    { date: new Date(2024, 11, 28), title: "School Play", type: "kids", time: "7:00 PM" },
-]
+// Define valid variants for Badge component
+type ValidBadgeVariant = "default" | "secondary" | "destructive" | "outline" | "ghost" | "link" | "sage" | "terracotta" | "gold" | "blue" | "rose" | null | undefined
 
-const getEventTypeVariant = (type: string) => {
+const getEventTypeVariant = (type?: string): ValidBadgeVariant => {
     switch (type) {
-        case "family": return "sage";
-        case "kids": return "gold";
-        case "health": return "terracotta";
-        default: return "secondary";
+        case "family": return "sage"
+        case "kids": return "terracotta"
+        case "health": return "rose"
+        case "work": return "blue"
+        default: return "default"
     }
 }
 
@@ -33,13 +32,18 @@ export default function CalendarPage() {
     const [date, setDate] = useState<Date | undefined>(undefined)
     const [filter, setFilter] = useState("all")
 
+    const events = useQuery(api.events.list)
+
+    // Delay to avoid SSR hydration mismatch
     useEffect(() => {
         setDate(new Date())
     }, [])
 
-    const filteredEvents = events.filter(event => 
-        filter === "all" || event.type === filter
-    )
+    const filteredEvents = (events ?? []).filter(event => {
+        const matchesType = filter === "all" || event.type === filter;
+        const matchesDate = !date || new Date(event.startTime).toDateString() === date.toDateString();
+        return matchesType && matchesDate;
+    })
 
     return (
         <div className="space-y-8">
@@ -91,23 +95,22 @@ export default function CalendarPage() {
                     <CardContent>
                         <div className="space-y-3">
                             {filteredEvents.length > 0 ? (
-                                filteredEvents.map((event, index) => (
-                                    <div 
-                                        key={index} 
+                                filteredEvents.map((event) => (
+                                    <div
+                                        key={event._id}
                                         className="p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                                     >
                                         <div className="flex items-start justify-between gap-2">
                                             <h4 className="font-medium text-sm">{event.title}</h4>
-                                            <Badge 
-                                                variant={getEventTypeVariant(event.type) as any} 
-                                                className="capitalize text-xs flex-shrink-0"
-                                            >
-                                                {event.type}
-                                            </Badge>
+                                            {event.type && (
+                                                <Badge variant={getEventTypeVariant(event.type)} className="capitalize font-normal ml-auto">
+                                                    {event.type}
+                                                </Badge>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
                                             <Clock className="h-3 w-3" />
-                                            {event.time}
+                                            {new Date(event.startTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                                         </div>
                                     </div>
                                 ))
@@ -117,7 +120,7 @@ export default function CalendarPage() {
                                 </p>
                             )}
                         </div>
-                        
+
                         {/* Legend */}
                         <div className="mt-6 pt-4 border-t">
                             <p className="text-xs font-medium text-muted-foreground mb-3">Event Types</p>
@@ -138,16 +141,16 @@ function formatDateHeader(date: Date): string {
     const today = new Date()
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
-    
+
     if (date.toDateString() === today.toDateString()) {
         return "Today's Events"
     } else if (date.toDateString() === tomorrow.toDateString()) {
         return "Tomorrow's Events"
     } else {
-        return date.toLocaleDateString("en-US", { 
-            weekday: "long", 
-            month: "short", 
-            day: "numeric" 
+        return date.toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "short",
+            day: "numeric"
         })
     }
 }

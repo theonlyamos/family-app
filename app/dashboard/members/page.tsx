@@ -2,6 +2,9 @@
 
 import { useState, useRef, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
 import {
     Table,
@@ -42,120 +45,32 @@ import {
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 
-interface Member {
-    id: string;
-    first_name: string;
-    middle_name?: string;
-    last_name: string;
-    aliases?: string[];
-    date_of_birth?: string;
-    place_of_birth?: string;
-    place_of_residence?: string;
-    phone_numbers?: string[];
-    email_addresses?: string[];
-    education?: string;
-    occupation?: string;
-    gender?: string;
-    bio?: string;
-    father?: string;
-    mother?: string;
-    spouse?: string;
-    children?: string[];
-    siblings?: string[];
-    role: "admin" | "member" | "viewer";
-    created_at: string;
-    avatar_url?: string;
+// Form data type for the member dialog
+interface MemberFormData {
+    firstName: string;
+    middleName: string;
+    lastName: string;
+    aliases: string[];
+    dateOfBirth: string;
+    placeOfBirth: string;
+    placeOfResidence: string;
+    phoneNumbers: string[];
+    emailAddresses: string[];
+    education: string;
+    occupation: string;
+    gender: string;
+    bio: string;
+    fatherId: string;
+    motherId: string;
+    spouseId: string;
+    avatarUrl: string;
 }
 
-const mockMembers: Member[] = [
-    {
-        id: "1",
-        first_name: "John",
-        last_name: "Miller",
-        aliases: ["Johnny", "J.R."],
-        date_of_birth: "1985-03-15",
-        place_of_birth: "Chicago, Illinois",
-        place_of_residence: "Seattle, Washington",
-        phone_numbers: ["+1 (555) 123-4567", "+1 (555) 987-6543"],
-        email_addresses: ["john@millerfamily.com", "john.work@email.com"],
-        education: "Bachelor's in Computer Science, University of Washington",
-        occupation: "Senior Software Engineer at Microsoft",
-        gender: "male",
-        bio: "John is the head of the family. He loves hiking, photography, and spending time with his kids.",
-        father: "",
-        mother: "",
-        spouse: "2",
-        children: ["3", "4"],
-        siblings: [],
-        role: "admin",
-        created_at: "2023-01-15T10:00:00Z",
-    },
-    {
-        id: "2",
-        first_name: "Jane",
-        last_name: "Miller",
-        aliases: ["Janie"],
-        date_of_birth: "1987-07-22",
-        place_of_birth: "Portland, Oregon",
-        place_of_residence: "Seattle, Washington",
-        phone_numbers: ["+1 (555) 123-4568"],
-        email_addresses: ["jane@millerfamily.com"],
-        education: "Master's in Education, Stanford University",
-        occupation: "Elementary School Teacher",
-        gender: "female",
-        bio: "Jane is a dedicated teacher and loving mother. She enjoys gardening and yoga.",
-        father: "",
-        mother: "",
-        spouse: "1",
-        children: ["3", "4"],
-        siblings: [],
-        role: "member",
-        created_at: "2023-01-15T10:00:00Z",
-    },
-    {
-        id: "3",
-        first_name: "Sam",
-        last_name: "Miller",
-        date_of_birth: "2010-11-08",
-        place_of_birth: "Seattle, Washington",
-        place_of_residence: "Seattle, Washington",
-        phone_numbers: [],
-        email_addresses: ["sam@millerfamily.com"],
-        education: "8th Grade",
-        occupation: "Student",
-        gender: "male",
-        bio: "Sam loves soccer and video games. He's on the school soccer team.",
-        father: "1",
-        mother: "2",
-        spouse: "",
-        children: [],
-        siblings: ["4"],
-        role: "member",
-        created_at: "2023-01-15T10:00:00Z",
-    },
-    {
-        id: "4",
-        first_name: "Emily",
-        last_name: "Miller",
-        aliases: ["Emmy"],
-        date_of_birth: "2013-04-12",
-        place_of_birth: "Seattle, Washington",
-        place_of_residence: "Seattle, Washington",
-        phone_numbers: [],
-        email_addresses: ["emily@millerfamily.com"],
-        education: "5th Grade",
-        occupation: "Student",
-        gender: "female",
-        bio: "Emily loves art, dancing, and playing with her friends.",
-        father: "1",
-        mother: "2",
-        spouse: "",
-        children: [],
-        siblings: ["3"],
-        role: "member",
-        created_at: "2023-01-15T10:00:00Z",
-    },
-]
+const emptyForm: MemberFormData = {
+    firstName: "", middleName: "", lastName: "", aliases: [], dateOfBirth: "", placeOfBirth: "", placeOfResidence: "",
+    phoneNumbers: [], emailAddresses: [], education: "", occupation: "", gender: "", bio: "",
+    fatherId: "", motherId: "", spouseId: "", avatarUrl: "",
+}
 
 function DynamicListInput({ items, onChange, placeholder, label }: { items: string[]; onChange: (items: string[]) => void; placeholder?: string; label: string }) {
     const addItem = () => onChange([...items, ""])
@@ -180,49 +95,39 @@ function DynamicListInput({ items, onChange, placeholder, label }: { items: stri
     )
 }
 
-function RelationshipSelector({ label, value, onChange, members, multiple = false }: { label: string; value: string | string[]; onChange: (value: string | string[]) => void; members: Member[]; multiple?: boolean }) {
+function RelationshipSelector({ label, value, onChange, members, multiple = false }: { label: string; value: string; onChange: (value: string) => void; members: Doc<"members">[]; multiple?: boolean }) {
     const [searchQuery, setSearchQuery] = useState("")
     const [isOpen, setIsOpen] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
-    const selectedIds = multiple ? (value as string[]) : value ? [value as string] : []
-    const selectedIdSet = new Set(selectedIds)
-    const selectedMembers = members.filter(m => selectedIdSet.has(m.id))
+    const selectedMember = value ? members.find(m => m._id === value) : null
     const filteredMembers = members.filter(member =>
-        !selectedIdSet.has(member.id) &&
-        (member.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         member.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         `${member.first_name} ${member.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()))
+        member._id !== value &&
+        (member.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            member.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            `${member.firstName} ${member.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()))
     )
 
-    const addMember = (memberId: string) => {
-        if (multiple) {
-            onChange([...selectedIds, memberId])
-            setSearchQuery("")
-        } else {
-            onChange(memberId)
-            setSearchQuery("")
-            setIsOpen(false)
-        }
+    const selectMember = (memberId: string) => {
+        onChange(memberId)
+        setSearchQuery("")
+        setIsOpen(false)
         inputRef.current?.focus()
     }
 
-    const removeMember = (memberId: string) => {
-        if (multiple) onChange(selectedIds.filter(id => id !== memberId))
-        else onChange("")
+    const clearMember = () => {
+        onChange("")
     }
 
     return (
         <div className="space-y-2">
             <Label>{label}</Label>
-            {selectedMembers.length > 0 && (
+            {selectedMember && (
                 <div className="flex flex-wrap gap-2 mb-2">
-                    {selectedMembers.map((member) => (
-                        <div key={member.id} className="flex items-center gap-2 px-3 py-1.5 bg-[oklch(0.94_0.02_145)] rounded-full text-sm">
-                            <Avatar className="h-5 w-5"><AvatarFallback className="bg-primary/10 text-primary text-[10px]">{member.first_name[0]}{member.last_name[0]}</AvatarFallback></Avatar>
-                            <span>{member.first_name} {member.last_name}</span>
-                            <button type="button" onClick={() => removeMember(member.id)} className="hover:bg-primary/20 rounded-full p-0.5 transition-colors cursor-pointer"><X className="h-3 w-3" /></button>
-                        </div>
-                    ))}
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-[oklch(0.94_0.02_145)] rounded-full text-sm">
+                        <Avatar className="h-5 w-5"><AvatarFallback className="bg-primary/10 text-primary text-[10px]">{selectedMember.firstName[0]}{selectedMember.lastName[0]}</AvatarFallback></Avatar>
+                        <span>{selectedMember.firstName} {selectedMember.lastName}</span>
+                        <button type="button" onClick={clearMember} className="hover:bg-primary/20 rounded-full p-0.5 transition-colors cursor-pointer"><X className="h-3 w-3" /></button>
+                    </div>
                 </div>
             )}
             <div className="relative">
@@ -236,9 +141,9 @@ function RelationshipSelector({ label, value, onChange, members, multiple = fals
                                 <div className="px-3 py-2 text-sm text-muted-foreground">{searchQuery ? "No members found" : "Type to search..."}</div>
                             ) : (
                                 filteredMembers.map((member) => (
-                                    <div key={member.id} onClick={() => addMember(member.id)} className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer transition-colors">
-                                        <Avatar className="h-8 w-8"><AvatarFallback className="bg-primary/10 text-primary text-xs">{member.first_name[0]}{member.last_name[0]}</AvatarFallback></Avatar>
-                                        <span className="text-sm">{member.first_name} {member.last_name}</span>
+                                    <div key={member._id} onClick={() => selectMember(member._id)} className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer transition-colors">
+                                        <Avatar className="h-8 w-8"><AvatarFallback className="bg-primary/10 text-primary text-xs">{member.firstName[0]}{member.lastName[0]}</AvatarFallback></Avatar>
+                                        <span className="text-sm">{member.firstName} {member.lastName}</span>
                                         <Plus className="h-4 w-4 ml-auto text-muted-foreground" />
                                     </div>
                                 ))
@@ -256,78 +161,143 @@ function MembersPageContent() {
     const searchParams = useSearchParams()
     const editMemberId = searchParams.get('edit')
 
-    const [members, setMembers] = useState<Member[]>(mockMembers)
+    const members = useQuery(api.members.list)
+    const createMember = useMutation(api.members.create)
+    const updateMember = useMutation(api.members.update)
+
     const [isDialogOpen, setIsDialogOpen] = useState(false)
-    const [editingMember, setEditingMember] = useState<Member | null>(null)
-    const [formData, setFormData] = useState<Partial<Member>>({
-        first_name: "", middle_name: "", last_name: "", aliases: [], date_of_birth: "", place_of_birth: "", place_of_residence: "",
-        phone_numbers: [], email_addresses: [], education: "", occupation: "", gender: "", bio: "",
-        father: "", mother: "", spouse: "", role: "member", avatar_url: "",
-    })
+    const [editingMemberId, setEditingMemberId] = useState<Id<"members"> | null>(null)
+    const [formData, setFormData] = useState<MemberFormData>(emptyForm)
 
     // Handle edit mode from URL params
     useEffect(() => {
-        if (editMemberId) {
-            const memberToEdit = members.find(m => m.id === editMemberId)
+        if (editMemberId && members) {
+            const memberToEdit = members.find(m => m._id === editMemberId)
             if (memberToEdit) {
-                setEditingMember(memberToEdit)
-                setFormData({ ...memberToEdit })
+                setEditingMemberId(memberToEdit._id)
+                setFormData({
+                    firstName: memberToEdit.firstName,
+                    middleName: memberToEdit.middleName || "",
+                    lastName: memberToEdit.lastName,
+                    aliases: memberToEdit.aliases || [],
+                    dateOfBirth: memberToEdit.dateOfBirth || "",
+                    placeOfBirth: memberToEdit.placeOfBirth || "",
+                    placeOfResidence: memberToEdit.placeOfResidence || "",
+                    phoneNumbers: memberToEdit.phoneNumbers || [],
+                    emailAddresses: memberToEdit.emailAddresses || [],
+                    education: memberToEdit.education || "",
+                    occupation: memberToEdit.occupation || "",
+                    gender: memberToEdit.gender || "",
+                    bio: memberToEdit.bio || "",
+                    fatherId: memberToEdit.fatherId || "",
+                    motherId: memberToEdit.motherId || "",
+                    spouseId: memberToEdit.spouseId || "",
+                    avatarUrl: memberToEdit.avatarUrl || "",
+                })
                 setIsDialogOpen(true)
             }
         }
     }, [editMemberId, members])
 
     const resetForm = () => {
-        setFormData({
-            first_name: "", middle_name: "", last_name: "", aliases: [], date_of_birth: "", place_of_birth: "", place_of_residence: "",
-            phone_numbers: [], email_addresses: [], education: "", occupation: "", gender: "", bio: "",
-            father: "", mother: "", spouse: "", role: "member", avatar_url: "",
-        })
-        setEditingMember(null)
-        // Clear edit param from URL if present
+        setFormData(emptyForm)
+        setEditingMemberId(null)
         if (editMemberId) {
             router.replace('/dashboard/members', { scroll: false })
         }
     }
 
     const openAddModal = () => { resetForm(); setIsDialogOpen(true) }
-    const openEditModal = (member: Member) => {
-        setEditingMember(member)
-        setFormData({ ...member })
+    const openEditModal = (member: Doc<"members">) => {
+        setEditingMemberId(member._id)
+        setFormData({
+            firstName: member.firstName,
+            middleName: member.middleName || "",
+            lastName: member.lastName,
+            aliases: member.aliases || [],
+            dateOfBirth: member.dateOfBirth || "",
+            placeOfBirth: member.placeOfBirth || "",
+            placeOfResidence: member.placeOfResidence || "",
+            phoneNumbers: member.phoneNumbers || [],
+            emailAddresses: member.emailAddresses || [],
+            education: member.education || "",
+            occupation: member.occupation || "",
+            gender: member.gender || "",
+            bio: member.bio || "",
+            fatherId: member.fatherId || "",
+            motherId: member.motherId || "",
+            spouseId: member.spouseId || "",
+            avatarUrl: member.avatarUrl || "",
+        })
         setIsDialogOpen(true)
     }
 
-    const handleSave = () => {
-        if (!formData.first_name || !formData.last_name) return
-        if (editingMember) {
-            setMembers(members.map(m => m.id === editingMember.id ? { ...m, ...formData } as Member : m))
+    const handleSave = async () => {
+        if (!formData.firstName || !formData.lastName) return
+        const cleanedAliases = formData.aliases.filter(a => a.trim() !== "")
+        const cleanedPhones = formData.phoneNumbers.filter(p => p.trim() !== "")
+        const cleanedEmails = formData.emailAddresses.filter(e => e.trim() !== "")
+
+        if (editingMemberId) {
+            await updateMember({
+                id: editingMemberId,
+                firstName: formData.firstName,
+                ...(formData.middleName && { middleName: formData.middleName }),
+                lastName: formData.lastName,
+                ...(cleanedAliases.length > 0 && { aliases: cleanedAliases }),
+                ...(formData.dateOfBirth && { dateOfBirth: formData.dateOfBirth }),
+                ...(formData.placeOfBirth && { placeOfBirth: formData.placeOfBirth }),
+                ...(formData.placeOfResidence && { placeOfResidence: formData.placeOfResidence }),
+                ...(cleanedPhones.length > 0 && { phoneNumbers: cleanedPhones }),
+                ...(cleanedEmails.length > 0 && { emailAddresses: cleanedEmails }),
+                ...(formData.education && { education: formData.education }),
+                ...(formData.occupation && { occupation: formData.occupation }),
+                ...(formData.gender && { gender: formData.gender }),
+                ...(formData.bio && { bio: formData.bio }),
+                ...(formData.avatarUrl && { avatarUrl: formData.avatarUrl }),
+                ...(formData.fatherId && { fatherId: formData.fatherId as Id<"members"> }),
+                ...(formData.motherId && { motherId: formData.motherId as Id<"members"> }),
+                ...(formData.spouseId && { spouseId: formData.spouseId as Id<"members"> }),
+            })
         } else {
-            const newMember: Member = {
-                id: crypto.randomUUID(),
-                first_name: formData.first_name,
-                middle_name: formData.middle_name,
-                last_name: formData.last_name,
-                aliases: formData.aliases?.filter(a => a.trim() !== ""),
-                date_of_birth: formData.date_of_birth,
-                place_of_birth: formData.place_of_birth,
-                place_of_residence: formData.place_of_residence,
-                phone_numbers: formData.phone_numbers?.filter(p => p.trim() !== ""),
-                email_addresses: formData.email_addresses?.filter(e => e.trim() !== ""),
-                education: formData.education,
-                occupation: formData.occupation,
-                gender: formData.gender,
-                bio: formData.bio,
-                father: formData.father,
-                mother: formData.mother,
-                spouse: formData.spouse,
-                role: formData.role || "member",
-                created_at: new Date().toISOString(),
-                avatar_url: formData.avatar_url,
-            }
-            setMembers([...members, newMember])
+            await createMember({
+                firstName: formData.firstName,
+                ...(formData.middleName && { middleName: formData.middleName }),
+                lastName: formData.lastName,
+                ...(cleanedAliases.length > 0 && { aliases: cleanedAliases }),
+                ...(formData.dateOfBirth && { dateOfBirth: formData.dateOfBirth }),
+                ...(formData.placeOfBirth && { placeOfBirth: formData.placeOfBirth }),
+                ...(formData.placeOfResidence && { placeOfResidence: formData.placeOfResidence }),
+                ...(cleanedPhones.length > 0 && { phoneNumbers: cleanedPhones }),
+                ...(cleanedEmails.length > 0 && { emailAddresses: cleanedEmails }),
+                ...(formData.education && { education: formData.education }),
+                ...(formData.occupation && { occupation: formData.occupation }),
+                ...(formData.gender && { gender: formData.gender }),
+                ...(formData.bio && { bio: formData.bio }),
+                ...(formData.avatarUrl && { avatarUrl: formData.avatarUrl }),
+                ...(formData.fatherId && { fatherId: formData.fatherId as Id<"members"> }),
+                ...(formData.motherId && { motherId: formData.motherId as Id<"members"> }),
+                ...(formData.spouseId && { spouseId: formData.spouseId as Id<"members"> }),
+            })
         }
         resetForm()
         setIsDialogOpen(false)
+    }
+
+    if (members === undefined) {
+        return (
+            <div className="space-y-8">
+                <div className="space-y-1">
+                    <h1 className="text-4xl font-display font-medium tracking-tight">Family Members</h1>
+                    <p className="text-muted-foreground">Loading members...</p>
+                </div>
+                <div className="grid gap-6 md:grid-cols-3">
+                    {[1, 2, 3].map(i => (
+                        <Card key={i} className="animate-pulse"><CardContent className="p-6"><div className="h-8 bg-muted rounded" /></CardContent></Card>
+                    ))}
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -348,10 +318,10 @@ function MembersPageContent() {
                         <DialogHeader>
                             <DialogTitle className="font-display text-2xl flex items-center gap-2">
                                 <UserPlus className="h-6 w-6 text-primary" />
-                                {editingMember ? 'Edit Member' : 'Add New Family Member'}
+                                {editingMemberId ? 'Edit Member' : 'Add New Family Member'}
                             </DialogTitle>
                             <DialogDescription>
-                                {editingMember ? 'Update the member information below.' : 'Create a profile for your family member. All fields are optional except name.'}
+                                {editingMemberId ? 'Update the member information below.' : 'Create a profile for your family member. All fields are optional except name.'}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-6 py-4">
@@ -359,7 +329,7 @@ function MembersPageContent() {
                             <div className="flex justify-center">
                                 <div className="relative">
                                     <Avatar className="h-24 w-24 ring-4 ring-primary/20 cursor-pointer hover:ring-primary/40 transition-all">
-                                        <AvatarImage src={formData.avatar_url} />
+                                        <AvatarImage src={formData.avatarUrl} />
                                         <AvatarFallback className="bg-muted text-muted-foreground">
                                             <Camera className="h-8 w-8" />
                                         </AvatarFallback>
@@ -373,13 +343,11 @@ function MembersPageContent() {
                                             onChange={(e) => {
                                                 const file = e.target.files?.[0]
                                                 if (file) {
-                                                    // Validate file size (max 5MB)
                                                     const MAX_SIZE = 5 * 1024 * 1024
                                                     if (file.size > MAX_SIZE) {
                                                         alert('File size must be less than 5MB')
                                                         return
                                                     }
-                                                    // Validate file type
                                                     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
                                                     if (!validTypes.includes(file.type)) {
                                                         alert('File must be an image (JPEG, PNG, WebP, or GIF)')
@@ -387,7 +355,7 @@ function MembersPageContent() {
                                                     }
                                                     const reader = new FileReader()
                                                     reader.onloadend = () => {
-                                                        setFormData({...formData, avatar_url: reader.result as string})
+                                                        setFormData({ ...formData, avatarUrl: reader.result as string })
                                                     }
                                                     reader.onerror = () => {
                                                         alert('Failed to read file. Please try again.')
@@ -404,30 +372,30 @@ function MembersPageContent() {
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label>First Name *</Label>
-                                    <Input value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="rounded-xl" />
+                                    <Input value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} className="rounded-xl" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Middle Name</Label>
-                                    <Input value={formData.middle_name} onChange={(e) => setFormData({...formData, middle_name: e.target.value})} className="rounded-xl" placeholder="Optional" />
+                                    <Input value={formData.middleName} onChange={(e) => setFormData({ ...formData, middleName: e.target.value })} className="rounded-xl" placeholder="Optional" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Last Name *</Label>
-                                    <Input value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="rounded-xl" />
+                                    <Input value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} className="rounded-xl" />
                                 </div>
                             </div>
 
                             {/* Aliases */}
-                            <DynamicListInput label="Aliases / Nicknames" items={formData.aliases || []} onChange={(aliases) => setFormData({...formData, aliases})} placeholder="e.g., Johnny, J.R." />
+                            <DynamicListInput label="Aliases / Nicknames" items={formData.aliases || []} onChange={(aliases) => setFormData({ ...formData, aliases })} placeholder="e.g., Johnny, J.R." />
 
                             {/* DOB & Gender */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Date of Birth</Label>
-                                    <Input type="date" value={formData.date_of_birth} onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})} className="rounded-xl" />
+                                    <Input type="date" value={formData.dateOfBirth} onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })} className="rounded-xl" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Gender</Label>
-                                    <Select value={formData.gender} onValueChange={(value) => setFormData({...formData, gender: value})}>
+                                    <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
                                         <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select gender" /></SelectTrigger>
                                         <SelectContent className="rounded-xl">
                                             <SelectItem value="male">Male</SelectItem>
@@ -442,57 +410,44 @@ function MembersPageContent() {
                             {/* Birthplace & Residence */}
                             <div className="space-y-2">
                                 <Label>Place of Birth</Label>
-                                <Input value={formData.place_of_birth} onChange={(e) => setFormData({...formData, place_of_birth: e.target.value})} className="rounded-xl" placeholder="e.g., Springfield, Illinois" />
+                                <Input value={formData.placeOfBirth} onChange={(e) => setFormData({ ...formData, placeOfBirth: e.target.value })} className="rounded-xl" placeholder="e.g., Springfield, Illinois" />
                             </div>
                             <div className="space-y-2">
                                 <Label>Current Place of Residence</Label>
-                                <Input value={formData.place_of_residence} onChange={(e) => setFormData({...formData, place_of_residence: e.target.value})} className="rounded-xl" placeholder="e.g., Chicago, Illinois" />
+                                <Input value={formData.placeOfResidence} onChange={(e) => setFormData({ ...formData, placeOfResidence: e.target.value })} className="rounded-xl" placeholder="e.g., Chicago, Illinois" />
                             </div>
 
                             {/* Contact */}
-                            <DynamicListInput label="Phone Numbers" items={formData.phone_numbers || []} onChange={(phone_numbers) => setFormData({...formData, phone_numbers})} placeholder="+1 (555) 000-0000" />
-                            <DynamicListInput label="Email Addresses" items={formData.email_addresses || []} onChange={(email_addresses) => setFormData({...formData, email_addresses})} placeholder="email@example.com" />
+                            <DynamicListInput label="Phone Numbers" items={formData.phoneNumbers || []} onChange={(phoneNumbers) => setFormData({ ...formData, phoneNumbers })} placeholder="+1 (555) 000-0000" />
+                            <DynamicListInput label="Email Addresses" items={formData.emailAddresses || []} onChange={(emailAddresses) => setFormData({ ...formData, emailAddresses })} placeholder="email@example.com" />
 
                             {/* Professional */}
                             <div className="space-y-2">
                                 <Label>Education</Label>
-                                <Input value={formData.education} onChange={(e) => setFormData({...formData, education: e.target.value})} className="rounded-xl" placeholder="e.g., Bachelor's in Computer Science" />
+                                <Input value={formData.education} onChange={(e) => setFormData({ ...formData, education: e.target.value })} className="rounded-xl" placeholder="e.g., Bachelor's in Computer Science" />
                             </div>
                             <div className="space-y-2">
                                 <Label>Occupation</Label>
-                                <Input value={formData.occupation} onChange={(e) => setFormData({...formData, occupation: e.target.value})} className="rounded-xl" placeholder="e.g., Software Engineer" />
+                                <Input value={formData.occupation} onChange={(e) => setFormData({ ...formData, occupation: e.target.value })} className="rounded-xl" placeholder="e.g., Software Engineer" />
                             </div>
 
                             {/* Bio */}
                             <div className="space-y-2">
                                 <Label>Bio / Notes</Label>
-                                <Textarea value={formData.bio} onChange={(e) => setFormData({...formData, bio: e.target.value})} className="rounded-xl min-h-[100px]" placeholder="Add any additional information..." />
+                                <Textarea value={formData.bio} onChange={(e) => setFormData({ ...formData, bio: e.target.value })} className="rounded-xl min-h-[100px]" placeholder="Add any additional information..." />
                             </div>
 
                             {/* Relationships */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <RelationshipSelector label="Father" value={formData.father || ""} onChange={(father) => setFormData({...formData, father: father as string})} members={members.filter(m => m.gender === 'male')} />
-                                <RelationshipSelector label="Mother" value={formData.mother || ""} onChange={(mother) => setFormData({...formData, mother: mother as string})} members={members.filter(m => m.gender === 'female')} />
-                                <RelationshipSelector label="Spouse / Partner" value={formData.spouse || ""} onChange={(spouse) => setFormData({...formData, spouse: spouse as string})} members={members} />
-                            </div>
-
-                            {/* Role */}
-                            <div className="space-y-2">
-                                <Label>Access Role</Label>
-                                <Select value={formData.role} onValueChange={(value: "admin" | "member" | "viewer") => setFormData({...formData, role: value})}>
-                                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select role" /></SelectTrigger>
-                                    <SelectContent className="rounded-xl">
-                                        <SelectItem value="admin"><div className="flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /><span>Admin - Full access</span></div></SelectItem>
-                                        <SelectItem value="member"><div className="flex items-center gap-2"><User className="h-4 w-4 text-primary" /><span>Member - Can view and edit</span></div></SelectItem>
-                                        <SelectItem value="viewer"><div className="flex items-center gap-2"><Heart className="h-4 w-4 text-primary" /><span>Viewer - View-only</span></div></SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <RelationshipSelector label="Father" value={formData.fatherId} onChange={(fatherId) => setFormData({ ...formData, fatherId })} members={members.filter(m => m.gender === 'male')} />
+                                <RelationshipSelector label="Mother" value={formData.motherId} onChange={(motherId) => setFormData({ ...formData, motherId })} members={members.filter(m => m.gender === 'female')} />
+                                <RelationshipSelector label="Spouse / Partner" value={formData.spouseId} onChange={(spouseId) => setFormData({ ...formData, spouseId })} members={members} />
                             </div>
                         </div>
                         <DialogFooter>
                             <Button variant="outline" className="rounded-xl" onClick={() => { resetForm(); setIsDialogOpen(false) }}>Cancel</Button>
-                            <Button className="rounded-xl" disabled={!formData.first_name || !formData.last_name} onClick={handleSave}>
-                                {editingMember ? 'Save Changes' : 'Save Member'}
+                            <Button className="rounded-xl" disabled={!formData.firstName || !formData.lastName} onClick={handleSave}>
+                                {editingMemberId ? 'Save Changes' : 'Save Member'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -512,7 +467,7 @@ function MembersPageContent() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">Admins</CardTitle>
                         <div className="w-10 h-10 rounded-xl bg-[oklch(0.94_0.06_45)] text-[oklch(0.45_0.12_45)] flex items-center justify-center"><Shield className="h-5 w-5" /></div>
                     </CardHeader>
-                    <CardContent><div className="text-3xl font-display font-medium">{members.filter(m => m.role === "admin").length}</div></CardContent>
+                    <CardContent><div className="text-3xl font-display font-medium">0</div></CardContent>
                 </Card>
                 <Card className="animate-fade-in-up animation-delay-200">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -537,29 +492,29 @@ function MembersPageContent() {
                         </TableHeader>
                         <TableBody>
                             {members.map((member) => (
-                                <TableRow key={member.id} className="cursor-pointer transition-colors">
+                                <TableRow key={member._id} className="cursor-pointer transition-colors">
                                     <TableCell className="pl-6">
                                         <Avatar className="h-10 w-10 ring-2 ring-primary/10">
-                                            <AvatarImage src={member.avatar_url} />
-                                            <AvatarFallback className="bg-primary/10 text-primary font-medium">{member.first_name[0]}{member.last_name[0]}</AvatarFallback>
+                                            <AvatarImage src={member.avatarUrl} />
+                                            <AvatarFallback className="bg-primary/10 text-primary font-medium">{member.firstName[0]}{member.lastName[0]}</AvatarFallback>
                                         </Avatar>
                                     </TableCell>
                                     <TableCell className="font-medium">
                                         <div className="flex flex-col">
-                                            <span>{member.first_name} {member.last_name}</span>
-                                            <span className="text-xs text-muted-foreground md:hidden">{member.email_addresses?.[0] || "No email"}</span>
+                                            <span>{member.firstName} {member.lastName}</span>
+                                            <span className="text-xs text-muted-foreground md:hidden">{member.emailAddresses?.[0] || "No email"}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-muted-foreground hidden md:table-cell">{member.email_addresses?.[0] || "No email"}</TableCell>
+                                    <TableCell className="text-muted-foreground hidden md:table-cell">{member.emailAddresses?.[0] || "No email"}</TableCell>
                                     <TableCell>
-                                        <Badge variant={member.role === "admin" ? "sage" : member.role === "viewer" ? "secondary" : "default"} className="capitalize">{member.role}</Badge>
+                                        <Badge variant="default" className="capitalize">member</Badge>
                                     </TableCell>
                                     <TableCell className="text-right pr-6">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-xl"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="rounded-xl">
-                                                <DropdownMenuItem className="cursor-pointer rounded-lg" asChild><Link href={`/dashboard/members/${member.id}`}><Eye className="mr-2 h-4 w-4" /> View Profile</Link></DropdownMenuItem>
-                                                <DropdownMenuItem className="cursor-pointer rounded-lg" asChild><Link href={`/dashboard/members?edit=${member.id}`}><Pencil className="mr-2 h-4 w-4" /> Edit member</Link></DropdownMenuItem>
+                                                <DropdownMenuItem className="cursor-pointer rounded-lg" asChild><Link href={`/dashboard/members/${member._id}`}><Eye className="mr-2 h-4 w-4" /> View Profile</Link></DropdownMenuItem>
+                                                <DropdownMenuItem className="cursor-pointer rounded-lg" onClick={() => openEditModal(member)}><Pencil className="mr-2 h-4 w-4" /> Edit member</DropdownMenuItem>
                                                 <DropdownMenuItem className="cursor-pointer rounded-lg"><Mail className="mr-2 h-4 w-4" /> Send email</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>

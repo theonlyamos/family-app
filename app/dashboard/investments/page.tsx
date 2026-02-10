@@ -1,5 +1,8 @@
 "use client"
 
+import { useState } from "react"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     Table,
@@ -12,66 +15,89 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, TrendingDown, DollarSign, PieChart, ArrowUpRight, ArrowDownRight, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
-// Mock type definition
-interface Investment {
-    id: string;
-    name: string;
-    type: string;
-    amount: number;
-    date: string;
-    notes?: string;
-    change?: number;
-}
+// Define valid variants for Badge component
+type ValidBadgeVariant = "default" | "secondary" | "destructive" | "outline" | "ghost" | "link" | "sage" | "terracotta" | "gold" | "blue" | "rose" | null | undefined
 
-const mockInvestments: Investment[] = [
-    {
-        id: "1",
-        name: "Apple Inc.",
-        type: "stock",
-        amount: 15000.50,
-        date: "2023-01-15",
-        notes: "Tech sector allocation",
-        change: 34.2,
-    },
-    {
-        id: "2",
-        name: "Bitcoin",
-        type: "crypto",
-        amount: 8500.00,
-        date: "2023-03-10",
-        change: -5.8,
-    },
-    {
-        id: "3",
-        name: "Rental Property A",
-        type: "real_estate",
-        amount: 250000.00,
-        date: "2022-06-01",
-        change: 12.4,
-    },
-    {
-        id: "4",
-        name: "Vanguard ETF",
-        type: "stock",
-        amount: 45000.00,
-        date: "2021-11-20",
-        change: 8.7,
-    },
-]
-
-const getInvestmentTypeVariant = (type: string) => {
+const getInvestmentTypeVariant = (type: string): ValidBadgeVariant => {
     switch (type) {
-        case "stock": return "sage";
-        case "crypto": return "gold";
-        case "real_estate": return "terracotta";
-        default: return "secondary";
+        case "stock": return "blue"
+        case "crypto": return "gold"
+        case "real_estate": return "sage"
+        case "bond": return "secondary"
+        default: return "default"
     }
 }
 
 export default function InvestmentsPage() {
-    const totalValue = mockInvestments.reduce((acc, curr) => acc + curr.amount, 0)
-    const totalChange = mockInvestments.reduce((acc, curr) => acc + (curr.change || 0), 0) / mockInvestments.length
+    const investments = useQuery(api.investments.list)
+    const createInvestment = useMutation(api.investments.create)
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [form, setForm] = useState({
+        name: "",
+        type: "",
+        amount: "",
+        date: "",
+        notes: "",
+        change: "",
+    })
+
+    const handleCreate = async () => {
+        if (!form.name || !form.type || !form.amount || !form.date) return
+        await createInvestment({
+            name: form.name,
+            type: form.type as "stock" | "crypto" | "real_estate" | "bond" | "other",
+            amount: parseFloat(form.amount),
+            date: form.date,
+            ...(form.notes && { notes: form.notes }),
+            ...(form.change && { change: parseFloat(form.change) }),
+        })
+        setForm({ name: "", type: "", amount: "", date: "", notes: "", change: "" })
+        setIsDialogOpen(false)
+    }
+
+    if (investments === undefined) {
+        return (
+            <div className="space-y-8">
+                <div className="space-y-1">
+                    <h1 className="text-4xl font-display font-medium tracking-tight">Investments</h1>
+                    <p className="text-muted-foreground">Loading investments...</p>
+                </div>
+            </div>
+        )
+    }
+
+    const totalValue = investments.reduce((acc, curr) => acc + curr.amount, 0)
+    const totalChange = investments.length > 0
+        ? investments.reduce((acc, curr) => acc + (curr.change || 0), 0) / investments.length
+        : 0
+
+    // Find top performer
+    const topPerformer = investments.length > 0
+        ? investments.reduce((best, curr) => (curr.change || 0) > (best.change || 0) ? curr : best, investments[0])
+        : null
+
+    // Count unique types
+    const uniqueTypes = new Set(investments.map(i => i.type)).size
 
     return (
         <div className="space-y-8">
@@ -81,9 +107,64 @@ export default function InvestmentsPage() {
                     <h1 className="text-4xl font-display font-medium tracking-tight">Investments</h1>
                     <p className="text-muted-foreground">Track and manage your family's financial portfolio</p>
                 </div>
-                <Button className="shadow-md hover:shadow-lg transition-shadow">
-                    <Plus className="mr-2 h-4 w-4" /> Add Investment
-                </Button>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="shadow-md hover:shadow-lg transition-shadow">
+                            <Plus className="mr-2 h-4 w-4" /> Add Investment
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-2xl">
+                        <DialogHeader>
+                            <DialogTitle className="font-display text-xl">Add Investment</DialogTitle>
+                            <DialogDescription>Add a new investment to your portfolio.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Name *</Label>
+                                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g., Apple Inc." className="rounded-xl" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Type *</Label>
+                                    <Select value={form.type} onValueChange={(value) => setForm({ ...form, type: value })}>
+                                        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select type" /></SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="stock">Stock</SelectItem>
+                                            <SelectItem value="crypto">Crypto</SelectItem>
+                                            <SelectItem value="real_estate">Real Estate</SelectItem>
+                                            <SelectItem value="bond">Bond</SelectItem>
+                                            <SelectItem value="other">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Amount ($) *</Label>
+                                    <Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="15000" className="rounded-xl" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Date Acquired *</Label>
+                                    <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="rounded-xl" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Change (%)</Label>
+                                    <Input type="number" step="0.1" value={form.change} onChange={(e) => setForm({ ...form, change: e.target.value })} placeholder="12.5" className="rounded-xl" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Notes</Label>
+                                <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Additional notes..." className="rounded-xl" />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" className="rounded-xl" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                            <Button className="rounded-xl" disabled={!form.name || !form.type || !form.amount || !form.date} onClick={handleCreate}>
+                                Add Investment
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             {/* Stats Grid */}
@@ -102,11 +183,11 @@ export default function InvestmentsPage() {
                             ${totalValue.toLocaleString()}
                         </div>
                         <div className="flex items-center gap-1.5 text-xs">
-                            <span className="flex items-center text-primary font-medium">
-                                <ArrowUpRight className="h-3 w-3 mr-0.5" />
-                                12.5%
+                            <span className={`flex items-center ${totalChange >= 0 ? "text-primary" : "text-destructive"} font-medium`}>
+                                {totalChange >= 0 ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> : <ArrowDownRight className="h-3 w-3 mr-0.5" />}
+                                {Math.abs(totalChange).toFixed(1)}%
                             </span>
-                            <span className="text-muted-foreground">all time</span>
+                            <span className="text-muted-foreground">avg return</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -121,13 +202,15 @@ export default function InvestmentsPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-display font-medium tracking-tight mb-1">Apple Inc.</div>
+                        <div className="text-3xl font-display font-medium tracking-tight mb-1">{topPerformer?.name || "—"}</div>
                         <div className="flex items-center gap-1.5 text-xs">
-                            <span className="flex items-center text-primary font-medium">
-                                <ArrowUpRight className="h-3 w-3 mr-0.5" />
-                                34%
-                            </span>
-                            <span className="text-muted-foreground">this year</span>
+                            {topPerformer?.change !== undefined && (
+                                <span className="flex items-center text-primary font-medium">
+                                    <ArrowUpRight className="h-3 w-3 mr-0.5" />
+                                    {topPerformer.change}%
+                                </span>
+                            )}
+                            <span className="text-muted-foreground">return</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -144,7 +227,7 @@ export default function InvestmentsPage() {
                     <CardContent>
                         <div className="text-3xl font-display font-medium tracking-tight mb-1">Diversified</div>
                         <p className="text-xs text-muted-foreground">
-                            3 asset classes
+                            {uniqueTypes} asset {uniqueTypes === 1 ? "class" : "classes"}
                         </p>
                     </CardContent>
                 </Card>
@@ -160,7 +243,7 @@ export default function InvestmentsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-display font-medium tracking-tight mb-1">
-                            +{totalChange.toFixed(1)}%
+                            {totalChange >= 0 ? "+" : ""}{totalChange.toFixed(1)}%
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Across all investments
@@ -186,15 +269,15 @@ export default function InvestmentsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {mockInvestments.map((investment, index) => (
-                                <TableRow 
-                                    key={investment.id}
+                            {investments.map((investment, index) => (
+                                <TableRow
+                                    key={investment._id}
                                     className="cursor-pointer transition-colors"
                                     style={{ animationDelay: `${500 + index * 50}ms` }}
                                 >
                                     <TableCell className="font-medium">{investment.name}</TableCell>
                                     <TableCell>
-                                        <Badge variant={getInvestmentTypeVariant(investment.type) as any} className="capitalize">
+                                        <Badge variant={getInvestmentTypeVariant(investment.type)} className="capitalize font-normal">
                                             {investment.type.replace('_', ' ')}
                                         </Badge>
                                     </TableCell>
