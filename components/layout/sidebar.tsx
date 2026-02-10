@@ -41,7 +41,7 @@ const sidebarItems = [
     },
     {
         title: "Documents",
-        href: "/dashboard/vault",
+        href: "/dashboard/documents",
         icon: Folder,
     },
     // Keeping these accessible but maybe less prominent or just in the list
@@ -115,19 +115,19 @@ export function Sidebar() {
                         >
                             <Link href={item.href} className="relative">
                                 {/* Active indicator bar */}
-                                <span 
+                                <span
                                     className={cn(
                                         "absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-full bg-sidebar-primary transition-all duration-300",
                                         isActive ? "h-6 opacity-100" : "h-0 opacity-0"
                                     )}
                                 />
-                                <item.icon 
+                                <item.icon
                                     className={cn(
                                         "mr-3 h-5 w-5 transition-all duration-200",
-                                        isActive 
-                                            ? "text-sidebar-primary" 
+                                        isActive
+                                            ? "text-sidebar-primary"
                                             : "text-sidebar-foreground group-hover:text-sidebar-foreground"
-                                    )} 
+                                    )}
                                 />
                                 <span className="relative z-10">{item.title}</span>
                             </Link>
@@ -138,15 +138,15 @@ export function Sidebar() {
 
             {/* Footer Actions */}
             <div className="p-3 mt-auto space-y-1 border-t border-sidebar-border bg-sidebar/50">
-                <Button 
-                    variant="ghost" 
+                <Button
+                    variant="ghost"
                     className="w-full justify-start text-sidebar-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-xl transition-all duration-200"
                 >
                     <Settings className="mr-3 h-5 w-5" />
                     Settings
                 </Button>
-                <Button 
-                    variant="ghost" 
+                <Button
+                    variant="ghost"
                     className="w-full justify-start text-sidebar-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-200"
                     onClick={handleLogout}
                 >

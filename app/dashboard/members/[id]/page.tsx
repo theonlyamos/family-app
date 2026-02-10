@@ -757,7 +757,7 @@ export default function MemberDetailsPage() {
                             ) : (
                                 <div className="grid gap-4">
                                     {(memberDocuments ?? []).map((doc) => (
-                                        <Link key={doc._id} href={`/dashboard/vault/${doc._id}`}>
+                                        <Link key={doc._id} href={`/dashboard/documents/${doc._id}`}>
                                             <div className="flex items-center justify-between p-4 bg-muted rounded-xl hover:bg-muted/80 transition-colors cursor-pointer">
                                                 <div className="flex items-center gap-3">
                                                     <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">

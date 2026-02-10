@@ -58,7 +58,7 @@ export default function DocumentDetailsPage() {
                 <div className="text-center py-16">
                     <h1 className="text-2xl font-display font-medium">Document not found</h1>
                     <p className="text-muted-foreground mt-2">The document you're looking for doesn't exist.</p>
-                    <Button asChild className="mt-4"><Link href="/dashboard/vault">Back to Documents</Link></Button>
+                    <Button asChild className="mt-4"><Link href="/dashboard/documents">Back to Documents</Link></Button>
                 </div>
             </div>
         )
@@ -86,7 +86,7 @@ export default function DocumentDetailsPage() {
     const handleDelete = async () => {
         if (confirm("Are you sure you want to delete this document? This action cannot be undone.")) {
             await deleteDocument({ id })
-            router.push("/dashboard/vault")
+            router.push("/dashboard/documents")
         }
     }
 
@@ -109,7 +109,7 @@ export default function DocumentDetailsPage() {
         <div className="space-y-8 animate-fade-in-up">
             {/* Breadcrumbs */}
             <nav className="flex items-center text-sm text-muted-foreground animate-fade-in-up">
-                <Link href="/dashboard/vault" className="hover:text-primary transition-colors cursor-pointer">
+                <Link href="/dashboard/documents" className="hover:text-primary transition-colors cursor-pointer">
                     Documents
                 </Link>
                 <ChevronRight className="h-4 w-4 mx-2" />

@@ -186,7 +186,7 @@ const ALLOWED_FILE_TYPES = [
     "image/jpg"
 ]
 
-export default function VaultPage() {
+export default function DocumentsPage() {
     const [searchQuery, setSearchQuery] = useState("")
     const [filterType, setFilterType] = useState("All Document Types")
     const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
@@ -564,7 +564,7 @@ export default function VaultPage() {
             {/* Documents Grid */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {filteredDocuments.map((doc, index) => (
-                    <Link href={`/dashboard/vault/${doc._id}`} key={doc._id}>
+                    <Link href={`/dashboard/documents/${doc._id}`} key={doc._id}>
                         <Card
                             className="cursor-pointer h-full group animate-fade-in-up"
                             style={{ animationDelay: `${index * 50}ms` }}
